@@ -1,0 +1,21 @@
+{
+  "name": "gazin-ura-intelligence-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Backend somente leitura de integração com a Genesys Cloud (Etapa 3 — estrutura).",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/http/server.js",
+    "collect:once": "node dist/src/collectors/runOnce.js",
+    "test": "tsc -p tsconfig.json && node --test dist/test/*.test.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.6.3"
+  }
+}

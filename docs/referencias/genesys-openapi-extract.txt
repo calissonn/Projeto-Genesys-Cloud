@@ -1,0 +1,338 @@
+======== POST /api/v2/analytics/flows/aggregates/query
+summary: Query for flow aggregates
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:flowAggregate:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/FlowAggregationQuery
+  resp: #/definitions/FlowAggregateQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/flows/aggregates/jobs
+summary: Query for flow aggregates asynchronously
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:flowAggregate:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/FlowAsyncAggregationQuery
+  resp: #/definitions/AsyncQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/analytics/flows/aggregates/jobs/{jobId}
+summary: Get status for async query for Flow aggregates
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:flowAggregate:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  param: path jobId string req jobId 
+  resp: #/definitions/AsyncQueryStatus
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/analytics/flows/aggregates/jobs/{jobId}/results
+summary: Fetch a page of results for an async aggregates query
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:flowAggregate:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  param: path jobId string req jobId 
+  param: query cursor string  Cursor token to retrieve next page 
+  resp: #/definitions/FlowAsyncAggregateQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/flows/observations/query
+summary: Query for flow observations
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:flowObservation:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/FlowObservationQuery
+  resp: #/definitions/FlowObservationQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/flows/activity/query
+summary: Query for flow activity observations
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:flowObservation:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/FlowActivityQuery
+  param: query pageSize integer  The desired page size 
+  param: query pageNumber integer  The desired page number 
+  resp: #/definitions/FlowActivityResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/flowexecutions/aggregates/query
+summary: Query for flow execution aggregates
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:flowExecutionAggregate:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/FlowExecutionAggregationQuery
+  resp: #/definitions/FlowExecutionAggregateQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/conversations/details/query
+summary: Query for conversation details
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:conversationDetail:view", "analytics:agentConversationDetail:view", "externalContacts:conversation:viewAll"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/ConversationQuery
+  resp: #/definitions/AnalyticsConversationQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/conversations/details/jobs
+summary: Query for conversation details asynchronously
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:conversationDetail:view", "analytics:agentConversationDetail:view", "externalContacts:conversation:viewAll"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/AsyncConversationQuery
+  resp: #/definitions/AsyncQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/analytics/conversations/details/jobs/availability
+summary: Lookup the datalake availability date and time
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:conversationDetail:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  resp: #/definitions/DataAvailabilityResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/analytics/conversations/details/jobs/{jobId}/results
+summary: Fetch a page of results for an async details job
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:conversationDetail:view", "analytics:agentConversationDetail:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  param: path jobId string req jobId 
+  param: query cursor string  Indicates where to resume query results (not required for first page) 
+  param: query pageSize integer  The desired maximum number of results 
+  resp: #/definitions/AnalyticsConversationAsyncQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/conversations/aggregates/query
+summary: Query for conversation aggregates
+desc: 
+perms: {"type": "ANY", "permissions": ["analytics:conversationAggregate:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/ConversationAggregationQuery
+  resp: #/definitions/ConversationAggregateQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/flows
+summary: Get a pageable list of flows, filtered by query parameters
+desc: If one or more IDs are specified, the search will fetch flows that match the given ID(s) and not use any additional supplied query parameters in the search.
+perms: {"type": "ANY", "permissions": ["architect:flow:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: query type array  Type 
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query sortBy string  Sort by 
+  param: query sortOrder string  Sort order 
+  param: query id array  ID. Deprecated, use GET /api/v2/flows/lookup with the ids parameter instead 
+  param: query name string  Name 
+  param: query description string  Description 
+  param: query nameOrDescription string  Name or description 
+  param: query publishVersionId string  Publish version ID 
+  param: query editableBy string  Editable by 
+  param: query lockedBy string  Locked by 
+  param: query lockedByClientId string  Locked by client ID 
+  param: query secure string  Secure ['any', 'checkedin', 'published']
+  param: query deleted boolean  Include deleted 
+  param: query includeSchemas boolean  Include variable schemas 
+  param: query virtualAgentEnabled boolean  Include/exclude virtual agent flows 
+  param: query publishedAfter string  Published after 
+  param: query publishedBefore string  Published before 
+  param: query divisionId array  division ID(s) 
+  resp: #/definitions/FlowEntityListing
+  errors: ['400', '401', '403', '404', '405', '408', '409', '413', '415', '429', '500', '503']
+======== GET /api/v2/flows/{flowId}
+summary: Get flow
+desc: 
+perms: {"type": "ANY", "permissions": ["architect:flow:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: path flowId string req Flow ID 
+  param: query deleted boolean  Deleted flows 
+  resp: #/definitions/Flow
+  errors: ['400', '401', '403', '404', '405', '408', '409', '410', '413', '415', '429', '500']
+======== GET /api/v2/flows/{flowId}/versions
+summary: Get flow version list
+desc: 
+perms: {"type": "ANY", "permissions": ["architect:flow:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: path flowId string req Flow ID 
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query deleted boolean  Include Deleted flows 
+  resp: #/definitions/FlowVersionEntityListing
+  errors: ['400', '401', '403', '404', '408', '409', '410', '413', '415', '429', '500', '503']
+======== GET /api/v2/flows/{flowId}/latestconfiguration
+summary: Get the latest configuration for flow
+desc: 
+perms: {"type": "ANY", "permissions": ["architect:flow:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: path flowId string req Flow ID 
+  param: query deleted boolean  Deleted flows 
+  resp: None
+  errors: ['400', '401', '403', '404', '405', '408', '409', '413', '415', '429', '500', '503']
+======== GET /api/v2/flows/{flowId}/versions/{versionId}/configuration
+summary: Get flow version configuration
+desc: 
+perms: {"type": "ANY", "permissions": ["architect:flow:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: path flowId string req Flow ID 
+  param: path versionId string req Version ID 
+  param: query deleted string  Deleted flows 
+  resp: None
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/flows/divisionviews
+summary: Get a pageable list of basic flow information objects filterable by query parameters.
+desc: This returns a simplified version of /flow consisting of name and type. If one or more IDs are specified, the search will fetch flows that match the given ID(s) and not use any additional supplied query parameters in the search.
+perms: {"type": "ALL", "permissions": ["architect:flow:search"]}
+scopes: ['architect', 'architect:readonly']
+  param: query type array  Type 
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query sortBy string  Sort by 
+  param: query sortOrder string  Sort order 
+  param: query id array  ID 
+  param: query name string  Name 
+  param: query publishVersionId string  Publish version ID 
+  param: query publishedAfter string  Published after 
+  param: query publishedBefore string  Published before 
+  param: query divisionId array  division ID(s) 
+  param: query includeSchemas boolean  Include variable schemas 
+  resp: #/definitions/FlowDivisionViewEntityListing
+  errors: ['400', '401', '403', '404', '405', '408', '409', '413', '415', '429', '500', '501']
+======== GET /api/v2/flows/milestones
+summary: Get a pageable list of flow milestones, filtered by query parameters
+desc: Multiple IDs can be specified, in which case all matching flow milestones will be returned, and no other parameters will be evaluated.
+perms: {"type": "ALL", "permissions": ["architect:flowMilestone:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query sortBy string  Sort by 
+  param: query sortOrder string  Sort order 
+  param: query id array  ID 
+  param: query name string  Name 
+  param: query description string  Description 
+  param: query nameOrDescription string  Name or description 
+  param: query divisionId array  division ID(s) 
+  resp: #/definitions/FlowMilestoneListing
+  errors: ['400', '401', '403', '404', '405', '408', '409', '413', '415', '429', '500', '503']
+======== GET /api/v2/flows/outcomes
+summary: Get a pageable list of flow outcomes, filtered by query parameters
+desc: Multiple IDs can be specified, in which case all matching flow outcomes will be returned, and no other parameters will be evaluated.
+perms: {"type": "ALL", "permissions": ["architect:flowOutcome:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query sortBy string  Sort by 
+  param: query sortOrder string  Sort order 
+  param: query id array  ID 
+  param: query name string  Name 
+  param: query description string  Description 
+  param: query nameOrDescription string  Name or description 
+  param: query divisionId array  division ID(s) 
+  resp: #/definitions/FlowOutcomeListing
+  errors: ['400', '401', '403', '404', '405', '408', '409', '413', '415', '429', '500', '503']
+======== GET /api/v2/flows/milestones/{milestoneId}
+summary: Get a flow milestone
+desc: Returns a specified flow milestone
+perms: {"type": "ALL", "permissions": ["architect:flowMilestone:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: path milestoneId string req flow milestone ID 
+  resp: #/definitions/FlowMilestone
+  errors: ['400', '401', '403', '404', '405', '408', '409', '413', '415', '429', '500', '503']
+======== GET /api/v2/architect/ivrs
+summary: Get IVR configs.
+desc: 
+perms: {"type": "ALL", "permissions": ["routing:callRoute:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query sortBy string  Sort by 
+  param: query sortOrder string  Sort order 
+  param: query name string  Name of the IVR to filter by. 
+  param: query dnis string  The phone number of the IVR to filter by. 
+  param: query scheduleGroup string  The Schedule Group of the IVR to filter by. 
+  param: query expand array  Which fields, if any, to expand 
+  resp: #/definitions/IVREntityListing
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/architect/schedulegroups
+summary: Get a list of schedule groups.
+desc: 
+perms: {"type": "ALL", "permissions": ["routing:scheduleGroup:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query sortBy string  Sort by 
+  param: query sortOrder string  Sort order 
+  param: query name string  Name of the Schedule Group to filter by. 
+  param: query scheduleIds string  A comma-delimited list of Schedule IDs to filter by. 
+  param: query divisionId array  List of divisionIds on which to filter. 
+  resp: #/definitions/ScheduleGroupEntityListing
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/routing/queues
+summary: Get list of queues.
+desc: 
+perms: {"type": "ANY", "permissions": ["routing:queue:view"]}
+scopes: ['routing', 'routing:readonly']
+  param: query pageNumber integer  Page number 
+  param: query pageSize integer  Page size 
+  param: query sortOrder string  Note: results are sorted by name. ['asc', 'desc']
+  param: query name string  Include only queues with the given name (leading and trailing asterisks allowed) 
+  param: query id array  Include only queues with the specified ID(s) 
+  param: query divisionId array  Include only queues in the specified division ID(s) 
+  param: query peerId array  Include only queues with the specified peer ID(s) 
+  param: query cannedResponseLibraryId string  Include only queues explicitly associated with the specified canned response library ID 
+  param: query hasPeer boolean  Include only queues with a peer ID 
+  param: query expand array  Which fields, if any, to expand 
+  resp: #/definitions/QueueEntityListing
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/journey/flows/paths/query
+summary: Query for flow paths.
+desc: 
+perms: {"type": "ALL", "permissions": ["journey:flowpaths:view"]}
+scopes: ['journey', 'journey:readonly']
+  body: #/definitions/FlowPathsQuery
+  resp: #/definitions/FlowPaths
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/flows/instances/query
+summary: Query the database of existing flow histories to look for particular flow criteria
+desc: Returns a list of matching flow histories up to 200 max.
+perms: {"type": "ANY", "permissions": ["architect:flowInstance:search"]}
+scopes: ['architect', 'architect:readonly']
+  param: query indexOnly boolean  indexes only 
+  param: query pageSize integer  number of results to return 
+  body: #/definitions/CriteriaQuery
+  resp: #/definitions/FlowResultEntityListing
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/flows/instances/querycapabilities
+summary: Retrieve a list of capabilities that the org can use to query for execution data
+desc: Returns the queryable parameters that can be used to build a query for execution data.
+perms: {"type": "ANY", "permissions": ["architect:flowInstance:search"]}
+scopes: ['architect', 'architect:readonly']
+  param: query expand string  Expand various query types. ['flow', 'action']
+  resp: #/definitions/FlowsQueryCriteriaResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/flows/instances/{instanceId}
+summary: Start a process (job) to prepare a download of a singular flow execution data instance by Id
+desc: Returns a JobResult object that contains an ID that can be used to check status and/or download links when the process (job) is complete.
+perms: {"type": "ANY", "permissions": ["architect:flowInstance:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: path instanceId string req Instance ID 
+  param: query expand string  Expand various details. ['bots', 'dataActions']
+  resp: #/definitions/GetFlowExecutionDataJobResult
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/flows/instances/jobs
+summary: Start a process (job) that will prepare a list of execution data IDs for download.
+desc: Returns a JobResult object that contains an ID that can be used to check status and/or download links when the process (job) is complete.
+perms: {"type": "ANY", "permissions": ["architect:flowInstance:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: query expand string  Expand various query types. ['bots', 'dataActions']
+  body: #/definitions/ExecutionDataRequest
+  resp: #/definitions/GetFlowExecutionDataJobResult
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/flows/instances/settings/executiondata
+summary: Get the execution history enabled setting.
+desc: Get the execution history enabled setting.
+perms: {"type": "ANY", "permissions": ["architect:flowinstanceexecutiondata:view"]}
+scopes: ['architect', 'architect:readonly']
+  resp: #/definitions/ExecutionDataFlowSettingsResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== GET /api/v2/flows/executions/{flowExecutionId}
+summary: Get a flow execution's details. Flow execution details are available for several days after the flow is started.
+desc: 
+perms: {"type": "ANY", "permissions": ["architect:flowExecution:view"]}
+scopes: ['architect', 'architect:readonly']
+  param: path flowExecutionId string req flow execution ID 
+  resp: #/definitions/FlowRuntimeExecution
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
+======== POST /api/v2/analytics/ratelimits/aggregates/query
+summary: Query for limits rate limit aggregates. Data populated when limits reach 90% of the maximum. Not a source of truth for limits hit but a best effort estimate.
+desc: The 'max' property can be used to determine estimated rate limit value hit. See https://developer.genesys.cloud/organization/organization/limits#available-limits for limits that are trackable (Operational Events Enabled).
+perms: {"type": "ANY", "permissions": ["analytics:rateLimitAggregate:view"]}
+scopes: ['analytics', 'analytics:readonly']
+  body: #/definitions/RateLimitAggregationQuery
+  resp: #/definitions/RateLimitAggregateQueryResponse
+  errors: ['400', '401', '403', '404', '408', '409', '413', '415', '429', '500', '503', '504']
