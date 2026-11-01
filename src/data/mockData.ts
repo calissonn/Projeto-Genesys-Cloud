@@ -12,6 +12,7 @@
  *  - GazinBank Conta Digital: aumento de erros de integração após troca da API de saldo.
  *  - E-commerce Pedidos: melhora no autosserviço após novo menu de rastreio.
  *  - Loja Cobrança: desligamentos mais altos às segundas-feiras.
+ *  - SAC: pico de erros de fluxo do Architect em uma janela de 3 dias (~8 a 10 dias atrás).
  */
 import { addDays, diffDays, todayISO, weekday } from '../lib/dates';
 import { hashString, mulberry32, noise } from '../lib/random';
@@ -28,9 +29,9 @@ const HOUR_SHARE = [
 const WEEKDAY_FACTOR = [0.32, 1.18, 1.05, 1.0, 0.98, 1.02, 0.7]; // dom..sáb
 
 /** Fatores de cenário por URA/dia. */
-export function scenarioAdjust(ura: Ura, date: string): FlowAdjust & { integration: number; volume: number } {
+export function scenarioAdjust(ura: Ura, date: string): FlowAdjust & { integration: number; volume: number; api: number; flowError: number } {
   const since = diffDays(ura.lastChange, date); // >= 0 após a alteração
-  const adj = { disc: 1, auth: 1, ss: 1, integration: 1, volume: 1 };
+  const adj = { disc: 1, auth: 1, ss: 1, integration: 1, volume: 1, api: 1, flowError: 1 };
   switch (ura.id) {
     case 'ura-consorcio':
       if (since >= 0) {
@@ -42,6 +43,7 @@ export function scenarioAdjust(ura: Ura, date: string): FlowAdjust & { integrati
     case 'ura-bank-conta':
       if (since >= 0) {
         adj.integration = 7;
+        adj.api = 5;
         adj.ss = 0.84;
         adj.disc = 1.18;
       }
@@ -57,6 +59,10 @@ export function scenarioAdjust(ura: Ura, date: string): FlowAdjust & { integrati
       break;
     case 'ura-loja-cobranca':
       if (weekday(date) === 1) adj.disc = 1.3;
+      break;
+    case 'ura-sac':
+      // Pico de erros de fluxo em uma janela de 3 dias (~8 a 10 dias atrás).
+      if (since >= 17 && since <= 19) adj.flowError = 40;
       break;
   }
   return adj;
@@ -119,6 +125,10 @@ export function generateRecords(uras: Ura[], endDate = todayISO(), days = HISTOR
           integrationErrors,
           transferFailures,
           queueAbandons: Math.round(transfers * 0.075 * noise(rnd, 0.3)),
+          cpfExceeded: ura.requiresCpf ? Math.round(authFailures * 0.3 * noise(rnd, 0.15)) : 0,
+          apiErrors: Math.round(ssCount * 0.012 * sc.api * noise(rnd, 0.5)),
+          flowErrors: rnd() < 0.004 * sc.flowError ? 1 + Math.floor(rnd() * 3) : 0,
+          invalidOptions: Math.round(entries * 0.08 * noise(rnd, 0.2)),
         });
       }
     }

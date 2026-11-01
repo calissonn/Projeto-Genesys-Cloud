@@ -9,9 +9,9 @@
  *  - linha de base com N dias anteriores (condições de variação);
  *  - no dia corrente, a linha de base considera apenas as mesmas horas já decorridas.
  */
-import type { AlertOccurrence, AlertRule, OccurrenceEvent, OccurrenceStatus, Totals, Ura } from '../data/types';
+import type { AlertOccurrence, AlertRule, MetricKey, OccurrenceEvent, OccurrenceStatus, Totals, Ura } from '../data/types';
 import { addDays } from './dates';
-import { RecordStore, emptyTotals, metricValue, sumTotals } from './metrics';
+import { METRIC_META, RecordStore, emptyTotals, metricValue, sumTotals } from './metrics';
 
 export interface OccurrenceOverride {
   status: OccurrenceStatus;
@@ -71,7 +71,7 @@ export function evaluateRules(
             n++;
           }
           if (n === 0) continue;
-          const isCount = rule.metric === 'integrationErrors' || rule.metric === 'failures' || rule.metric === 'entries';
+          const isCount = METRIC_META[rule.metric].unit === 'n';
           baseline = isCount ? metricValue(agg, rule.metric) / n : metricValue(agg, rule.metric);
           if (baseline <= 0) continue;
           const change = ((value - baseline) / baseline) * 100;
@@ -142,3 +142,78 @@ export const DEFAULT_RULES: AlertRule[] = [
     businessHoursOnly: true, baselineDays: 7, createdAt: '2026-10-01',
   },
 ];
+
+/** Tipos de falha monitorados pela detecção automática (e na tela de Falhas). */
+export const FAILURE_METRICS: { metric: MetricKey; label: string; minAbs: number }[] = [
+  { metric: 'authFailureRate', label: 'Falhas na identificação por CPF', minAbs: 2 },
+  { metric: 'cpfExceeded', label: 'Tentativas de identificação excedidas', minAbs: 8 },
+  { metric: 'integrationErrors', label: 'Erros em integrações', minAbs: 8 },
+  { metric: 'apiErrors', label: 'Falhas em consultas de APIs', minAbs: 6 },
+  { metric: 'transferFailures', label: 'Transferências malsucedidas', minAbs: 5 },
+  { metric: 'flowErrors', label: 'Erros em fluxos do Architect', minAbs: 3 },
+  { metric: 'invalidOptionRate', label: 'Comportamento inesperado de navegação', minAbs: 2 },
+  { metric: 'disconnectRate', label: 'Aumento anormal de desligamentos', minAbs: 3 },
+];
+
+/**
+ * Detecção automática de anomalias (sem regra cadastrada): compara cada dia com a média e o
+ * desvio-padrão dos 14 dias anteriores (z-score). Exige variação absoluta mínima e volume
+ * mínimo para evitar falsos positivos. No dia corrente compara as mesmas horas.
+ */
+export function detectFailureAnomalies(
+  store: RecordStore,
+  uras: Ura[],
+  opts: { days?: number; endDate?: string; nowHour?: number; overrides?: Record<string, OccurrenceOverride>; minVolume?: number } = {},
+): AlertOccurrence[] {
+  const days = opts.days ?? 14;
+  const end = opts.endDate ?? store.maxDate;
+  const nowHour = opts.nowHour ?? new Date().getHours();
+  const minVolume = opts.minVolume ?? 150;
+  const out: AlertOccurrence[] = [];
+  for (const ura of uras) {
+    if (ura.userCreated) continue;
+    const ids = new Set([ura.id]);
+    const cache = new Map<string, Totals>();
+    const day = (date: string, maxHour?: number) => {
+      const k = `${date}|${maxHour ?? ''}`;
+      let t = cache.get(k);
+      if (!t) cache.set(k, (t = sumTotals(store.query({ from: date, to: date }, ids, { maxHour }))));
+      return t;
+    };
+    for (let i = days - 1; i >= 0; i--) {
+      const date = addDays(end, -i);
+      const maxHour = date === end ? nowHour : undefined;
+      const cur = day(date, maxHour);
+      if (cur.entries < minVolume) continue;
+      for (const fm of FAILURE_METRICS) {
+        if (fm.metric === 'authFailureRate' && !ura.requiresCpf) continue;
+        if (fm.metric === 'cpfExceeded' && !ura.requiresCpf) continue;
+        const base: number[] = [];
+        for (let b = 1; b <= 14; b++) {
+          const t = day(addDays(date, -b), maxHour);
+          if (t.entries >= minVolume / 2) base.push(metricValue(t, fm.metric));
+        }
+        if (base.length < 7) continue;
+        const mean = base.reduce((a, v) => a + v, 0) / base.length;
+        const sd = Math.sqrt(base.reduce((a, v) => a + (v - mean) ** 2, 0) / (base.length - 1));
+        const v = metricValue(cur, fm.metric);
+        const z = (v - mean) / Math.max(sd, METRIC_META[fm.metric].unit === '%' ? 0.5 : 1);
+        if (z < 3 || v - mean < fm.minAbs) continue;
+        const id = `auto|${fm.metric}|${ura.id}|${date}`;
+        const ov = opts.overrides?.[id];
+        out.push({
+          id, ruleId: `auto:${fm.metric}`, ruleName: `Detecção automática — ${fm.label}`, uraId: ura.id, departmentId: ura.departmentId, date,
+          metric: fm.metric, value: v, baseline: mean, threshold: 3, condition: 'aumento_pct',
+          severity: z >= 6 ? 'critica' : z >= 4 ? 'alta' : 'media', volume: cur.entries,
+          status: ov?.status ?? (i > 6 ? 'resolvida' : 'aberta'), owner: ov?.owner ?? ura.owner,
+          history: [
+            { at: `${date}T${maxHour != null ? String(maxHour).padStart(2, '0') : '23'}:59`, by: 'Detecção automática', text: `Valor ${v.toFixed(1)} vs. média de 14 dias ${mean.toFixed(1)} (desvio de ${z.toFixed(1)} desvios-padrão).` },
+            ...(i > 6 && !ov ? [{ at: `${addDays(date, 1)}T09:00`, by: 'Sistema (simulado)', text: 'Encerrada automaticamente: indicador voltou à normalidade.' }] : []),
+            ...(ov?.history ?? []),
+          ],
+        });
+      }
+    }
+  }
+  return out;
+}

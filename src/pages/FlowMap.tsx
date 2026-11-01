@@ -178,7 +178,9 @@ export function FlowMap() {
     const q = params.get('ura');
     const u = q && uras.find((x) => x.id === q);
     if (u && filters.uraId !== u.id) setFilters({ departmentId: u.departmentId, uraId: u.id });
-    if (q) setParams({}, { replace: true });
+    const step = params.get('etapa');
+    if (step) setSelectedNode(step);
+    if (q || step) setParams({}, { replace: true });
   }, [params, uras, filters.uraId, setFilters, setParams]);
 
   const ura = uras.find((u) => u.id === filters.uraId) ?? null;

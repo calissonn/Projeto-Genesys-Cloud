@@ -24,7 +24,11 @@ O front-end **nunca** acessa a Genesys diretamente nem conhece credenciais.
 | `data/flowModel.ts` | Modelo de etapas da URA, propagação de volume com loops (ponto fixo) e calibração pelas taxas do período; cada etapa indica a instrumentação exigida em produção |
 | `data/genesysCatalog.ts` | Catálogo das APIs oficiais (somente leitura) exibido na tela de Integração |
 | `lib/metrics.ts` | Índice por data, totais, taxas, agrupamentos, período anterior |
-| `lib/alertEngine.ts` | Avaliação diária das regras com volume mínimo, horário comercial e linha de base |
+| `lib/alertEngine.ts` | Avaliação diária das regras com volume mínimo, horário comercial e linha de base; detecção automática de anomalias de falha (z-score ≥ 3 sobre 14 dias, variação absoluta e volume mínimos) |
+| `lib/stepAnalytics.ts` | Desligamentos por etapa e por opção do menu (modelo calibrado) e teste de duas proporções |
+| `lib/reports.ts` | Montagem dos 10 relatórios, com conclusões e recomendações geradas por regras explícitas |
+| `lib/exporters.ts` | Exportação CSV, Excel (ExcelJS) e PDF (jsPDF + AutoTable), carregadas sob demanda |
+| `data/changeLog.ts`, `data/testSeed.ts` | Histórico de versões e testes de exemplo (simulados) |
 | `services/dataProvider.ts` | Provedor de dados: `mockProvider` (MVP) ou `backendProvider` (`VITE_DATA_SOURCE=backend`) |
 | `context/AppContext.tsx` | Estado global: tema, filtros, catálogo, metas, regras, ocorrências |
 | `pages/` | Dashboard, Catálogo, Mapa, Alertas, Integração e páginas de módulos planejados |
@@ -36,7 +40,7 @@ O front-end **nunca** acessa a Genesys diretamente nem conhece credenciais.
 - Desligamento na URA (fluxo) é separado de abandono na fila (após transferência).
 
 ### Persistência no MVP
-Preferências, regras de alerta, tratamento de ocorrências e URAs cadastradas ficam no `localStorage` do navegador (protótipo).
+Preferências, metas, regras de alerta, tratamento de ocorrências, URAs cadastradas, testes (com evidências até 300 KB), alterações registradas e auditoria ficam no `localStorage` do navegador (protótipo).
 Na Etapa 3 migram para o PostgreSQL (`server/src/db/schema.sql`) com auditoria.
 
 ## Backend (`server/`)
@@ -69,6 +73,12 @@ Na Etapa 3 migram para o PostgreSQL (`server/src/db/schema.sql`) com auditoria.
 | Etapa | Escopo | Situação |
 |---|---|---|
 | 1 | Dashboard, catálogo, mapa interativo, central de alertas, dados simulados | **Concluída (este MVP)** |
-| 2 | Detalhamento por etapa, comparação, falhas, relatórios, histórico, testes | Planejada (páginas descrevem escopo e requisitos) |
+| 2 | Detalhamento por etapa, comparação, falhas, relatórios, histórico, testes | **Concluída** |
 | 3 | Banco, backend, adaptadores Genesys | **Estrutura criada** em `server/` (não conectada) |
 | 4 | IA CX | Planejada |
+
+## Notas da Etapa 2
+- **Significância estatística:** comparações de taxas usam teste de duas proporções (aproximação normal, p < 0,05, mínimo de 30 observações por grupo). Indica diferença improvável por acaso — não prova causa.
+- **Conclusões e recomendações** dos relatórios são geradas por regras explícitas e redigidas como hipóteses quando citam causas. Análise por IA fica para a Etapa 4.
+- **Desligamento esperado:** desligamentos após a mensagem de fora do horário não são classificados como problema.
+- **Dependências de exportação:** `exceljs` traz dependências transitivas com alertas moderados do `npm audit` (`minimatch`, `uuid`) que não afetam o uso no navegador (apenas geração de arquivos); reavaliar ao atualizar a biblioteca.

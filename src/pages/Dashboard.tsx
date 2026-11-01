@@ -130,8 +130,8 @@ export function Dashboard() {
             <KpiCard label="Tempo médio na URA" value={fmtDuration(r.avgDuration)} delta={variation(r.avgDuration, pr.avgDuration)} higherIsBad
               info="Tempo médio de permanência por entrada no fluxo, do início até a saída (transferência, desligamento ou encerramento). Em produção: tFlow." />
             <KpiCard label="Falhas registradas" value={fmtInt(t.failures)} delta={variation(t.failures, p.failures)} higherIsBad
-              info="Soma de falhas de identificação por CPF, erros de integração/consulta e transferências malsucedidas. Depende de instrumentação (Milestones/Outcomes) no Architect."
-              sub={`${fmtInt(t.authFailures)} CPF · ${fmtInt(t.integrationErrors)} integração · ${fmtInt(t.transferFailures)} transf.`} />
+              info="Soma de falhas de identificação por CPF, erros de integração, falhas de consulta de API, transferências malsucedidas e erros de fluxo. Depende de instrumentação (Milestones/Outcomes) no Architect."
+              sub={<Link to="/falhas" className="hover:underline">{fmtInt(t.authFailures)} CPF · {fmtInt(t.integrationErrors)} integração · {fmtInt(t.apiErrors)} API · {fmtInt(t.transferFailures)} transf. · {fmtInt(t.flowErrors)} fluxo</Link>} />
             <KpiCard label="Transferências p/ humano" value={fmtInt(t.transfers)} delta={variation(t.transfers, p.transfers)} higherIsBad
               info="Saídas do fluxo com transferência para fila de atendimento humano (ACD)." />
             <KpiCard label="Taxa de transferência" value={fmtPct(r.transferRate)} delta={r.transferRate - pr.transferRate} deltaUnit=" p.p." higherIsBad

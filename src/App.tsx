@@ -4,6 +4,12 @@ import { ErrorState, LoadingState } from './components/ui';
 import { AppProvider, useApp } from './context/AppContext';
 import { Alerts } from './pages/Alerts';
 import { Catalog } from './pages/Catalog';
+import { ChangeHistory } from './pages/ChangeHistory';
+import { Compare } from './pages/Compare';
+import { Disconnects } from './pages/Disconnects';
+import { Failures } from './pages/Failures';
+import { Reports } from './pages/Reports';
+import { Tests } from './pages/Tests';
 import { Dashboard } from './pages/Dashboard';
 import { FlowMap } from './pages/FlowMap';
 import { Integration } from './pages/Integration';
@@ -26,6 +32,12 @@ export default function App() {
             <Route path="/uras" element={<DataGate><Catalog /></DataGate>} />
             <Route path="/mapa" element={<DataGate><FlowMap /></DataGate>} />
             <Route path="/alertas" element={<DataGate><Alerts /></DataGate>} />
+            <Route path="/desligamentos" element={<DataGate><Disconnects /></DataGate>} />
+            <Route path="/falhas" element={<DataGate><Failures /></DataGate>} />
+            <Route path="/comparacao" element={<DataGate><Compare /></DataGate>} />
+            <Route path="/relatorios" element={<DataGate><Reports /></DataGate>} />
+            <Route path="/testes" element={<Tests />} />
+            <Route path="/historico" element={<DataGate><ChangeHistory /></DataGate>} />
             <Route path="/integracao" element={<Integration />} />
             {Object.entries(PLANS).map(([k, p]) => <Route key={k} path={`/${k}`} element={<Roadmap plan={p} />} />)}
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -16,6 +16,8 @@ const COND_LABEL: Record<AlertCondition, string> = {
   queda_pct: 'Queda (%) vs linha de base',
 };
 
+export { COND_LABEL };
+
 export function fmtMetric(m: MetricKey, v: number) {
   const u = METRIC_META[m].unit;
   return u === '%' ? fmtPct(v) : u === 's' ? fmtDuration(v) : fmtInt(v);
@@ -133,7 +135,7 @@ function refText(o: AlertOccurrence) {
   return `base ${fmtMetric(o.metric, o.baseline)} (${ch > 0 ? '+' : ''}${ch.toFixed(0)}%)`;
 }
 
-function OccurrenceDrawer({ o, onClose, onUpdate }: { o: AlertOccurrence; onClose: () => void; onUpdate: (p: { status?: OccurrenceStatus; owner?: string; note?: string }) => void }) {
+export function OccurrenceDrawer({ o, onClose, onUpdate }: { o: AlertOccurrence; onClose: () => void; onUpdate: (p: { status?: OccurrenceStatus; owner?: string; note?: string }) => void }) {
   const { uras, departments, rules } = useApp();
   const [note, setNote] = useState('');
   const [owner, setOwner] = useState(o.owner);
@@ -145,15 +147,15 @@ function OccurrenceDrawer({ o, onClose, onUpdate }: { o: AlertOccurrence; onClos
         <div className="flex flex-wrap items-center gap-2"><SeverityBadge s={o.severity} /><OccStatusBadge s={o.status} /></div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat k="Valor observado" v={fmtMetric(o.metric, o.value)} />
-          <Stat k="Linha de base" v={o.baseline != null ? fmtMetric(o.metric, o.baseline) : '—'} />
-          <Stat k="Condição" v={`${COND_LABEL[o.condition].split(' ')[0]} ${o.condition.endsWith('pct') ? `${o.threshold}%` : fmtMetric(o.metric, o.threshold)}`} />
+          <Stat k={o.ruleId.startsWith('auto:') ? 'Média 14 dias' : 'Linha de base'} v={o.baseline != null ? fmtMetric(o.metric, o.baseline) : '—'} />
+          <Stat k="Condição" v={o.ruleId.startsWith('auto:') ? '≥ 3 desvios-padrão' : `${COND_LABEL[o.condition].split(' ')[0]} ${o.condition.endsWith('pct') ? `${o.threshold}%` : fmtMetric(o.metric, o.threshold)}`} />
           <Stat k="Volume avaliado" v={`${fmtInt(o.volume)} entradas`} />
         </div>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt className="text-xs text-slate-500">Departamento</dt><dd>{departments.find((d) => d.id === o.departmentId)?.name}</dd></div>
           <div><dt className="text-xs text-slate-500">Indicador</dt><dd>{METRIC_META[o.metric].label}</dd></div>
           <div className="sm:col-span-2"><dt className="text-xs text-slate-500">Descrição</dt>
-            <dd>{describe(o)} {rule && `Regra avaliada ${rule.businessHoursOnly ? 'no horário de funcionamento (08h–20h)' : 'nas 24 horas'}, com volume mínimo de ${fmtInt(rule.minVolume)} entradas${o.baseline != null ? ` e linha de base dos ${rule.baselineDays} dias anteriores` : ''}.`}</dd></div>
+            <dd>{describe(o)} {o.ruleId.startsWith('auto:') && 'Gerada pela detecção automática de anomalias (comparação com a média e o desvio-padrão dos 14 dias anteriores, com volume mínimo). Trata-se de um indício estatístico, não de um diagnóstico.'} {rule && `Regra avaliada ${rule.businessHoursOnly ? 'no horário de funcionamento (08h–20h)' : 'nas 24 horas'}, com volume mínimo de ${fmtInt(rule.minVolume)} entradas${o.baseline != null ? ` e linha de base dos ${rule.baselineDays} dias anteriores` : ''}.`}</dd></div>
         </dl>
         <div className="flex flex-wrap gap-2">
           <Link to={`/mapa?ura=${o.uraId}`} className="btn-secondary"><GitBranch className="h-4 w-4" /> Investigar no mapa</Link>
@@ -268,14 +270,14 @@ function Rules() {
   );
 }
 
-function blankRule(): AlertRule {
+export function blankRule(metric: MetricKey = 'disconnectRate'): AlertRule {
   return {
-    id: `r-${Date.now().toString(36)}`, name: '', metric: 'disconnectRate', condition: 'aumento_pct', threshold: 20, departmentId: 'all', uraId: 'all',
+    id: `r-${Date.now().toString(36)}`, name: '', metric, condition: 'aumento_pct', threshold: 20, departmentId: 'all', uraId: 'all',
     severity: 'media', owner: '', enabled: true, minVolume: 200, businessHoursOnly: true, baselineDays: 7, createdAt: new Date().toISOString().slice(0, 10),
   };
 }
 
-function RuleForm({ rule, onClose, onSave }: { rule: AlertRule; onClose: () => void; onSave: (r: AlertRule) => void }) {
+export function RuleForm({ rule, onClose, onSave }: { rule: AlertRule; onClose: () => void; onSave: (r: AlertRule) => void }) {
   const { uras, departments, store } = useApp();
   const [f, setF] = useState(rule);
   const [err, setErr] = useState<string | null>(null);

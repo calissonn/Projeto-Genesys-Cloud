@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { DEPARTMENTS, URAS } from '../data/catalog';
-import type { AlertOccurrence, AlertRule, Goals, Ura } from '../data/types';
-import { DEFAULT_RULES, evaluateRules, type OccurrenceOverride } from '../lib/alertEngine';
+import { buildChangeLog } from '../data/changeLog';
+import { seedTests } from '../data/testSeed';
+import type { AlertOccurrence, AlertRule, AuditEntry, Goals, TestCase, Ura, UraChange } from '../data/types';
+import { DEFAULT_RULES, detectFailureAnomalies, evaluateRules, sevRank, type OccurrenceOverride } from '../lib/alertEngine';
 import { addDays, todayISO } from '../lib/dates';
 import { previousRange, type Range, type RecordStore } from '../lib/metrics';
 import { usePersistentState } from '../lib/storage';
@@ -74,7 +76,17 @@ interface AppState {
   occurrences: AlertOccurrence[];
   updateOccurrence: (id: string, patch: { status?: AlertOccurrence['status']; owner?: string; note?: string }) => void;
   dataSource: { kind: string; label: string };
+  audit: AuditEntry[];
+  logAction: (action: string, entity: string, entityId?: string, details?: string) => void;
+  tests: TestCase[];
+  saveTest: (t: TestCase) => void;
+  deleteTest: (id: string) => void;
+  changes: UraChange[];
+  saveChange: (c: UraChange) => void;
 }
+
+/** Usuário do protótipo — substituído pelo usuário autenticado (SSO) na Etapa 3. */
+export const CURRENT_USER = 'Você (protótipo)';
 
 const Ctx = createContext<AppState | null>(null);
 
@@ -84,6 +96,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  const [audit, setAudit] = usePersistentState<AuditEntry[]>('gui-audit', []);
+  const logAction = useCallback((action: string, entity: string, entityId?: string, details?: string) => {
+    setAudit((prev) => [{ id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, at: new Date().toISOString(), user: CURRENT_USER, action, entity, entityId, details }, ...prev].slice(0, 1000));
+  }, [setAudit]);
 
   const [customUras, setCustomUras] = usePersistentState<Ura[]>('gui-custom-uras', []);
   const [uraEdits, setUraEdits] = usePersistentState<Record<string, Partial<Ura>>>('gui-ura-edits', {});
@@ -99,8 +116,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { name, genesysFlowId, status, owner, description, businessHours, version } = u;
       setUraEdits((prev) => ({ ...prev, [u.id]: { name, genesysFlowId, status, owner, description, businessHours, version } }));
     }
-  }, [setCustomUras, setUraEdits]);
-  const removeUra = useCallback((id: string) => setCustomUras((prev) => prev.filter((u) => u.id !== id)), [setCustomUras]);
+    logAction('URA salva', 'URA', u.id, u.name);
+  }, [setCustomUras, setUraEdits, logAction]);
+  const removeUra = useCallback((id: string) => {
+    setCustomUras((prev) => prev.filter((u) => u.id !== id));
+    logAction('URA removida', 'URA', id);
+  }, [setCustomUras, logAction]);
 
   const [filters, setFiltersState] = usePersistentState<Filters>('gui-filters', () => ({
     preset: '7d', ...presetRange('7d'), departmentId: 'all', uraId: 'all',
@@ -139,17 +160,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [reloadKey]);
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  const [storedGoals, setGoals] = usePersistentState<Goals>('gui-goals', DEFAULT_GOALS);
+  const [storedGoals, setGoalsState] = usePersistentState<Goals>('gui-goals', DEFAULT_GOALS);
+  const setGoals = useCallback((g: Goals) => {
+    setGoalsState(g);
+    logAction('Metas alteradas', 'Metas', undefined, Object.entries(g).map(([k, v]) => `${k}=${v}`).join(', '));
+  }, [setGoalsState, logAction]);
   const goals = useMemo(() => ({ ...DEFAULT_GOALS, ...storedGoals }), [storedGoals]);
 
   const [rules, setRules] = usePersistentState<AlertRule[]>('gui-alert-rules', DEFAULT_RULES);
-  const saveRule = useCallback((r: AlertRule) =>
-    setRules((prev) => (prev.some((x) => x.id === r.id) ? prev.map((x) => (x.id === r.id ? r : x)) : [r, ...prev])), [setRules]);
-  const deleteRule = useCallback((id: string) => setRules((prev) => prev.filter((r) => r.id !== id)), [setRules]);
+  const saveRule = useCallback((r: AlertRule) => {
+    setRules((prev) => (prev.some((x) => x.id === r.id) ? prev.map((x) => (x.id === r.id ? r : x)) : [r, ...prev]));
+    logAction('Regra de alerta salva', 'Regra', r.id, `${r.name} (${r.enabled ? 'ativa' : 'pausada'})`);
+  }, [setRules, logAction]);
+  const deleteRule = useCallback((id: string) => {
+    setRules((prev) => prev.filter((r) => r.id !== id));
+    logAction('Regra de alerta excluída', 'Regra', id);
+  }, [setRules, logAction]);
 
   const [overrides, setOverrides] = usePersistentState<Record<string, OccurrenceOverride>>('gui-occ-overrides', {});
   const occurrences = useMemo(
-    () => (store ? evaluateRules(rules, store, uras, { overrides }) : []),
+    () => (store
+      ? [...evaluateRules(rules, store, uras, { overrides }), ...detectFailureAnomalies(store, uras, { overrides })]
+        .sort((a, b) => (a.date === b.date ? sevRank(b.severity) - sevRank(a.severity) : a.date < b.date ? 1 : -1))
+      : []),
     [store, rules, uras, overrides],
   );
   const updateOccurrence = useCallback<AppState['updateOccurrence']>((id, patch) => {
@@ -163,7 +196,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (patch.note) events.push({ at, by: 'Você', text: patch.note });
       return { ...prev, [id]: { status: patch.status ?? base.status, owner: patch.owner ?? base.owner, history: events } };
     });
-  }, [occurrences, setOverrides]);
+    logAction('Ocorrência atualizada', 'Ocorrência', id, [patch.status && `status: ${STATUS_TEXT[patch.status]}`, patch.owner && `responsável: ${patch.owner}`, patch.note && `comentário: ${patch.note}`].filter(Boolean).join('; '));
+  }, [occurrences, setOverrides, logAction]);
+
+  const [tests, setTests] = usePersistentState<TestCase[]>('gui-tests', seedTests);
+  const saveTest = useCallback((t: TestCase) => {
+    setTests((prev) => (prev.some((x) => x.id === t.id) ? prev.map((x) => (x.id === t.id ? t : x)) : [t, ...prev]));
+    logAction('Teste salvo', 'Teste', t.id, `${t.title} — ${t.status}`);
+  }, [setTests, logAction]);
+  const deleteTest = useCallback((id: string) => {
+    setTests((prev) => prev.filter((t) => t.id !== id));
+    logAction('Teste excluído', 'Teste', id);
+  }, [setTests, logAction]);
+
+  const [userChanges, setUserChanges] = usePersistentState<UraChange[]>('gui-ura-changes', []);
+  const changes = useMemo(
+    () => [...userChanges, ...buildChangeLog(URAS)].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
+    [userChanges],
+  );
+  const saveChange = useCallback((c: UraChange) => {
+    setUserChanges((prev) => (prev.some((x) => x.id === c.id) ? prev.map((x) => (x.id === c.id ? c : x)) : [c, ...prev]));
+    logAction('Alteração de URA registrada', 'Histórico', c.uraId, `${c.version}: ${c.description}`);
+  }, [setUserChanges, logAction]);
 
   const value: AppState = {
     theme,
@@ -188,6 +242,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     occurrences,
     updateOccurrence,
     dataSource: { kind: activeProvider.kind, label: activeProvider.label },
+    audit,
+    logAction,
+    tests,
+    saveTest,
+    deleteTest,
+    changes,
+    saveChange,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

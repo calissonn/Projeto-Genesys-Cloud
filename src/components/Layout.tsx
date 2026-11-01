@@ -1,11 +1,14 @@
 import clsx from 'clsx';
 import {
-  Activity, BarChart3, Bell, Bot, ClipboardCheck, FileBarChart, GitBranch, LayoutDashboard, Menu, Moon, PhoneOff, Plug, Settings, ShieldAlert, Sun, X, ListTree,
+  Activity, BarChart3, Bell, Bot, ClipboardCheck, FileBarChart, GitBranch, GitCompare, History, LayoutDashboard, Menu, Moon, PhoneOff, Plug, Settings, ShieldAlert, Sun, X, ListTree,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { FAILURE_METRICS } from '../lib/alertEngine';
 import { SimulatedTag } from './ui';
+
+const FAILURE_SET = new Set<string>(FAILURE_METRICS.map((f) => f.metric));
 
 interface NavItem { to: string; label: string; icon: typeof Activity; stage?: number; badge?: number }
 
@@ -14,6 +17,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const loc = useLocation();
   const openAlerts = occurrences.filter((o) => o.status === 'aberta').length;
+  const openFailures = occurrences.filter((o) => o.status === 'aberta' && FAILURE_SET.has(o.metric)).length;
 
   const groups: { title: string; items: NavItem[] }[] = [
     {
@@ -28,11 +32,18 @@ export function Layout({ children }: { children: ReactNode }) {
     {
       title: 'Análise',
       items: [
-        { to: '/desligamentos', label: 'Desligamentos', icon: PhoneOff, stage: 2 },
-        { to: '/falhas', label: 'Monitoramento de falhas', icon: ShieldAlert, stage: 2 },
+        { to: '/desligamentos', label: 'Desligamentos', icon: PhoneOff },
+        { to: '/falhas', label: 'Monitoramento de falhas', icon: ShieldAlert, badge: openFailures },
+        { to: '/comparacao', label: 'Comparação de períodos', icon: GitCompare },
+        { to: '/relatorios', label: 'Relatórios', icon: FileBarChart },
         { to: '/ia', label: 'Inteligência CX', icon: Bot, stage: 4 },
-        { to: '/testes', label: 'Gestão de testes', icon: ClipboardCheck, stage: 2 },
-        { to: '/relatorios', label: 'Relatórios', icon: FileBarChart, stage: 2 },
+      ],
+    },
+    {
+      title: 'Qualidade',
+      items: [
+        { to: '/testes', label: 'Gestão de testes', icon: ClipboardCheck },
+        { to: '/historico', label: 'Histórico e auditoria', icon: History },
       ],
     },
     {
@@ -83,7 +94,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </div>
       <div className="border-t border-white/10 px-5 py-3 text-[11px] text-brand-200/80">
         Fonte: <span className="font-medium text-white">{dataSource.label}</span>
-        <div>Versão 0.1 · MVP (Etapa 1)</div>
+        <div>Versão 0.2 · Etapa 2</div>
       </div>
     </nav>
   );

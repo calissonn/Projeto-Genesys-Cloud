@@ -78,6 +78,14 @@ export interface HourRecord {
   transferFailures: number;
   /** Abandonos APÓS a transferência (na fila humana) — fonte diferente: métricas de fila. */
   queueAbandons: number;
+  /** Ligações que atingiram o limite de tentativas de identificação. */
+  cpfExceeded: number;
+  /** Falhas em consultas de API de negócio (saldo, boleto, rastreio...). */
+  apiErrors: number;
+  /** Erros de execução do fluxo no Architect (ex.: caminho de erro acionado). */
+  flowErrors: number;
+  /** Seleções de opção inválida / sem digitação no menu (navegação inesperada). */
+  invalidOptions: number;
 }
 
 export interface Totals {
@@ -94,6 +102,10 @@ export interface Totals {
   integrationErrors: number;
   transferFailures: number;
   queueAbandons: number;
+  cpfExceeded: number;
+  apiErrors: number;
+  flowErrors: number;
+  invalidOptions: number;
   failures: number;
 }
 
@@ -107,7 +119,12 @@ export type MetricKey =
   | 'integrationErrors'
   | 'failures'
   | 'entries'
-  | 'avgDuration';
+  | 'avgDuration'
+  | 'apiErrors'
+  | 'transferFailures'
+  | 'cpfExceeded'
+  | 'invalidOptionRate'
+  | 'flowErrors';
 
 export type AlertCondition = 'acima_de' | 'abaixo_de' | 'aumento_pct' | 'queda_pct';
 
@@ -197,4 +214,53 @@ export interface Goals {
   authFailureCrit: number; // %
   stepDisconnectWarn: number; // % por etapa do mapa
   stepDisconnectCrit: number; // % por etapa do mapa
+}
+
+export type TestStatus = 'aprovado' | 'reprovado' | 'pendente';
+
+export interface TestEvidence {
+  id: string;
+  name: string;
+  kind: 'texto' | 'imagem' | 'arquivo';
+  /** Conteúdo textual ou data URL (somente arquivos pequenos no protótipo). */
+  content: string;
+  addedAt: string;
+}
+
+export interface TestCase {
+  id: string;
+  uraId: string;
+  version: string;
+  scenario: string; // categoria (ex.: "CPF inválido")
+  title: string;
+  steps: string;
+  expected: string;
+  obtained: string;
+  status: TestStatus;
+  owner: string;
+  date: string; // YYYY-MM-DD
+  evidences: TestEvidence[];
+  history: OccurrenceEvent[];
+}
+
+export interface UraChange {
+  id: string;
+  uraId: string;
+  version: string;
+  date: string; // YYYY-MM-DD (publicação)
+  author: string;
+  description: string;
+  type: 'menu' | 'identificacao' | 'integracao' | 'mensagem' | 'roteamento' | 'horario' | 'novo';
+  /** Origem do registro: simulado (protótipo) ou cadastrado pelo usuário. */
+  source: 'simulado' | 'usuario';
+}
+
+export interface AuditEntry {
+  id: string;
+  at: string; // ISO
+  user: string;
+  action: string;
+  entity: string;
+  entityId?: string;
+  details?: string;
 }

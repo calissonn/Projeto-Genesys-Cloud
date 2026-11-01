@@ -57,7 +57,8 @@ export function scopeUraIds(uras: Ura[], scope: Scope): Set<string> | null {
 export function emptyTotals(): Totals {
   return {
     entries: 0, unique: 0, uniqueDistinct: 0, disconnects: 0, transfers: 0, selfService: 0, otherExits: 0,
-    durationSec: 0, authFailures: 0, authAttempts: 0, integrationErrors: 0, transferFailures: 0, queueAbandons: 0, failures: 0,
+    durationSec: 0, authFailures: 0, authAttempts: 0, integrationErrors: 0, transferFailures: 0, queueAbandons: 0,
+    cpfExceeded: 0, apiErrors: 0, flowErrors: 0, invalidOptions: 0, failures: 0,
   };
 }
 
@@ -84,8 +85,12 @@ export function sumTotals(records: HourRecord[]): Totals {
     t.integrationErrors += r.integrationErrors;
     t.transferFailures += r.transferFailures;
     t.queueAbandons += r.queueAbandons;
+    t.cpfExceeded += r.cpfExceeded;
+    t.apiErrors += r.apiErrors;
+    t.flowErrors += r.flowErrors;
+    t.invalidOptions += r.invalidOptions;
   }
-  t.failures = t.authFailures + t.integrationErrors + t.transferFailures;
+  t.failures = t.authFailures + t.integrationErrors + t.apiErrors + t.transferFailures + t.flowErrors;
   return t;
 }
 
@@ -124,6 +129,11 @@ export function metricValue(t: Totals, m: MetricKey): number {
     case 'failures': return t.failures;
     case 'entries': return t.entries;
     case 'avgDuration': return r.avgDuration;
+    case 'apiErrors': return t.apiErrors;
+    case 'transferFailures': return t.transferFailures;
+    case 'cpfExceeded': return t.cpfExceeded;
+    case 'invalidOptionRate': return t.entries ? (t.invalidOptions / t.entries) * 100 : 0;
+    case 'flowErrors': return t.flowErrors;
   }
 }
 
@@ -162,4 +172,9 @@ export const METRIC_META: Record<MetricKey, { label: string; unit: '%' | 'n' | '
   failures: { label: 'Falhas registradas (total)', unit: 'n', higherIsBad: true },
   entries: { label: 'Entradas na URA', unit: 'n', higherIsBad: false },
   avgDuration: { label: 'Tempo médio na URA', unit: 's', higherIsBad: true },
+  apiErrors: { label: 'Falhas em consultas de API', unit: 'n', higherIsBad: true },
+  transferFailures: { label: 'Transferências malsucedidas', unit: 'n', higherIsBad: true },
+  cpfExceeded: { label: 'Tentativas de identificação excedidas', unit: 'n', higherIsBad: true },
+  invalidOptionRate: { label: 'Taxa de opção inválida (navegação inesperada)', unit: '%', higherIsBad: true },
+  flowErrors: { label: 'Erros de fluxo do Architect', unit: 'n', higherIsBad: true },
 };
