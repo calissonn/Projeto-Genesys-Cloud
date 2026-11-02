@@ -87,7 +87,7 @@ Com oauth2-proxy (OIDC do Microsoft Entra ID ou outro IdP corporativo), as opç�
 ### 2.4 Genesys Cloud
 
 1. A administração da Genesys cria uma **função somente leitura** com as permissões listadas em `docs/GENESYS_API.md` §2 e um **cliente OAuth Client Credentials** com essa função.
-2. Configure `GENESYS_REGION_DOMAIN`, `GENESYS_CLIENT_ID`, `GENESYS_CLIENT_SECRET` no cofre de segredos.
+2. Configure no cofre de segredos: `GENESYS_REGION_DOMAIN=mypurecloud.com` (organização Gazin na região **Leste dos EUA / us-east-1**), `GENESYS_CLIENT_ID` e `GENESYS_CLIENT_SECRET`.
 3. Confirme os limites de requisição da organização e ajuste `GENESYS_MAX_REQUESTS_PER_MINUTE`.
 4. Após a primeira coleta, **valide os números** contra *Performance → Flows* da Genesys (especialmente `GENESYS_HUMAN_TRANSFER_TYPES`, que define o que conta como transferência para humano).
 

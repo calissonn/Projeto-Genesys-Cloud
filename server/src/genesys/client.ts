@@ -8,7 +8,7 @@ export class GenesysApiError extends Error {
 }
 
 export interface ClientOptions {
-  /** Ex.: https://api.sae1.pure.cloud */
+  /** Ex.: https://api.mypurecloud.com (us-east-1) */
   apiBaseUrl: string;
   maxRequestsPerMinute: number;
   maxRetries?: number;

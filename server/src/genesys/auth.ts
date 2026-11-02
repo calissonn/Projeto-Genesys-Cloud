@@ -16,7 +16,7 @@ export class GenesysAuth {
   private inflight: Promise<string> | null = null;
 
   constructor(
-    /** Ex.: https://login.sae1.pure.cloud */
+    /** Ex.: https://login.mypurecloud.com (us-east-1) */
     private readonly loginBaseUrl: string,
     private readonly clientId: string,
     private readonly clientSecret: string,

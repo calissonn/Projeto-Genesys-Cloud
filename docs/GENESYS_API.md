@@ -75,10 +75,10 @@ Interpretação a validar com dados reais:
 | Corpo | `grant_type=client_credentials` (form-urlencoded) |
 | Cabeçalho | `Authorization: Basic base64(clientId:clientSecret)` |
 | Host das APIs | `https://api.{região}` |
-| Região da Gazin | **confirmar** — se for São Paulo (`sa-east-1`), o domínio é `sae1.pure.cloud` (conforme `PureCloudRegionHosts` do SDK oficial) → `login.sae1.pure.cloud` / `api.sae1.pure.cloud` |
+| Região da Gazin | **Leste dos EUA (`us-east-1`)** — confirmada pela usuária em 02/11/2026. Domínio `mypurecloud.com` (conforme `PureCloudRegionHosts` do SDK oficial) → `login.mypurecloud.com` / `api.mypurecloud.com` |
 
 ```http
-POST https://login.sae1.pure.cloud/oauth/token
+POST https://login.mypurecloud.com/oauth/token
 Authorization: Basic <base64(CLIENT_ID:CLIENT_SECRET)>
 Content-Type: application/x-www-form-urlencoded
 

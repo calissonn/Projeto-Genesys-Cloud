@@ -42,7 +42,7 @@ export function Integration() {
           <ul className="mt-4 space-y-2 text-sm">
             <Step done={false} text="Cliente OAuth (Client Credentials) criado pela administração da Genesys, com função somente leitura" />
             <Step done={false} text="Credenciais armazenadas em cofre de segredos do backend (nunca no navegador)" />
-            <Step done={false} text="Região da organização confirmada (ex.: sa-east-1 → sae1.pure.cloud)" />
+            <Step done={false} text="Região da organização confirmada: Leste dos EUA (us-east-1 → mypurecloud.com)" />
             <Step done={false} text="IDs dos fluxos vinculados no Catálogo de URAs" />
             <Step done={false} text="Milestones e Outcomes configurados nos fluxos (para etapas, autosserviço e CPF)" />
             <Step done={true} text="Backend, banco PostgreSQL e adaptadores somente leitura implementados e testados (pasta server/)" />

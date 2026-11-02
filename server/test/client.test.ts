@@ -35,19 +35,19 @@ function fakeFetch(responses: { status: number; body?: unknown; headers?: Record
 test('cliente repete após 429 respeitando Retry-After e autentica uma vez', async () => {
   const { f, calls } = fakeFetch([{ status: 429, headers: { 'retry-after': '2' } }, { status: 200, body: { results: [] } }]);
   const sleeps: number[] = [];
-  const client = new GenesysClient(new GenesysAuth('https://login.sae1.pure.cloud', 'id', 'secret', f), {
-    apiBaseUrl: 'https://api.sae1.pure.cloud', maxRequestsPerMinute: 100, fetchImpl: f, sleep: async (ms) => { sleeps.push(ms); },
+  const client = new GenesysClient(new GenesysAuth('https://login.mypurecloud.com', 'id', 'secret', f), {
+    apiBaseUrl: 'https://api.mypurecloud.com', maxRequestsPerMinute: 100, fetchImpl: f, sleep: async (ms) => { sleeps.push(ms); },
   });
   const res = await client.query<{ results: unknown[] }>('/api/v2/analytics/flows/aggregates/query', { interval: 'x', metrics: ['nFlow'] });
   assert.deepEqual(res, { results: [] });
   assert.deepEqual(sleeps, [2000]);
   assert.equal(calls.filter((c) => c.includes('oauth')).length, 1);
-  assert.ok(calls.every((c) => !c.includes('oauth') || c.startsWith('POST https://login.sae1.pure.cloud/')));
+  assert.ok(calls.every((c) => !c.includes('oauth') || c.startsWith('POST https://login.mypurecloud.com/')));
 });
 
 test('cliente recusa chamada fora da allowlist sem tocar a rede', async () => {
   const { f, calls } = fakeFetch([]);
-  const client = new GenesysClient(new GenesysAuth('https://login.sae1.pure.cloud', 'id', 'secret', f), { apiBaseUrl: 'https://api.sae1.pure.cloud', maxRequestsPerMinute: 10, fetchImpl: f });
+  const client = new GenesysClient(new GenesysAuth('https://login.mypurecloud.com', 'id', 'secret', f), { apiBaseUrl: 'https://api.mypurecloud.com', maxRequestsPerMinute: 10, fetchImpl: f });
   await assert.rejects(client.query('/api/v2/flows/actions/publish', {}), /somente leitura/);
   assert.equal(calls.length, 0);
 });
