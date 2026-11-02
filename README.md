@@ -2,7 +2,7 @@
 
 Plataforma web para monitoramento, análise e otimização das URAs da Gazin.
 
-> **Versão 0.3 — Etapa 3 (backend e integração).** No modo protótipo os indicadores são **simulados** e identificados na interface.
+> **Versão 0.4 — Etapa 4 (Inteligência CX).** No modo protótipo os indicadores são **simulados** e identificados na interface.
 > O backend (`server/`) com PostgreSQL, perfis de acesso e integração **somente leitura** com a Genesys Cloud está implementado e testado contra um Genesys **simulado**; falta configurar a credencial real.
 
 ## Executar
@@ -27,9 +27,9 @@ Modo backend (PostgreSQL + API + Genesys simulado): ver **[docs/DEPLOY.md](docs/
 - **Relatórios gerenciais** — 10 relatórios (executivo, desempenho, desligamentos por departamento e etapa, transferências por destino, autosserviço, falhas, alterações, comparativo, alertas) com conclusões e recomendações por regras; exportação **Excel, PDF e CSV**.
 - **Gestão de testes** — cenários por URA e versão, esperado × obtido, evidências (texto/arquivo), status aprovado/reprovado/pendente, histórico, roteiro padrão e indicação de prontidão para publicar.
 - **Histórico e auditoria** — versões publicadas com impacto antes × depois, registro manual de alterações e trilha de auditoria das ações (exportável em CSV).
+- **Inteligência CX** — análises automáticas (antes × depois de alterações, tendências, mudanças anormais, etapas com perda recorrente, oportunidades de autosserviço) com problema, evidências, causas como hipóteses, grau de confiança, recomendação, impacto esperado e forma de validar; priorização “o que investigar primeiro”, resumo executivo (PDF) e redação opcional por IA, desligada por padrão.
 - **Administração** — departamentos, URAs e vínculo com fluxos do Architect, filas, usuários e perfis (Administrador, Analista CX, Supervisor, Gestor), metas, instrumentação (papel de cada Milestone/Outcome) e situação/execuções da integração.
 - **Integração Genesys** — situação, arquitetura, indicadores nativos × instrumentação, catálogo de APIs oficiais.
-- Módulo da Etapa 4 (IA CX) com escopo e pré-requisitos descritos.
 
 Modo claro/escuro e layout responsivo.
 

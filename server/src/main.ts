@@ -5,6 +5,7 @@
  *  3. Sobe a API e, se configurado, o agendador da integração Genesys (somente leitura)
  * O front-end (build estático) deve ser servido pelo proxy reverso/autenticação (ver docs/DEPLOY.md).
  */
+import { AiService, loadAiConfig } from './ai/summary.js';
 import { buildApp } from './api/app.js';
 import { loadServerConfig } from './config.js';
 import { migrate } from './db/migrate.js';
@@ -23,7 +24,9 @@ async function main() {
     console.warn(`[genesys] ATENÇÃO: usando URL alternativa (${cfg.genesys.apiBaseUrl}) — apenas para testes.`);
   }
 
-  const app = await buildApp({ db, cfg, integration });
+  const ai = new AiService(loadAiConfig(process.env));
+  console.log(ai.cfg.enabled ? `[ia] redação por IA ATIVADA (modelo ${ai.cfg.model}) — apenas agregados são enviados.` : '[ia] redação por IA desativada.');
+  const app = await buildApp({ db, cfg, integration, ai });
   let stopScheduler: (() => void) | null = null;
   if (integration && cfg.scheduler.enabled) {
     stopScheduler = startScheduler(integration, { ...cfg.scheduler, timeZone: cfg.timeZone }, (m) => app.log.warn(m));

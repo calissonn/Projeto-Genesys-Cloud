@@ -12,6 +12,7 @@ import { can, isScoped, PROFILE_LABEL, permissionsOf, type AppUser, type Permiss
 import { tx, type Db } from '../db/pool.js';
 import type { GenesysIntegration } from '../sync/integration.js';
 import { hourlyRecords } from './metricsService.js';
+import { AI_PAYLOAD_SCHEMA, AiService, findPii, loadAiConfig, type AiPayload } from '../ai/summary.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -23,6 +24,7 @@ export interface AppDeps {
   db: Db;
   cfg: ServerConfig;
   integration: GenesysIntegration | null;
+  ai?: AiService;
 }
 
 class HttpError extends Error {
@@ -34,8 +36,10 @@ class HttpError extends Error {
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ID = /^[\w.:|@-]{1,200}$/;
 
-export async function buildApp({ db, cfg, integration }: AppDeps): Promise<FastifyInstance> {
-  const app = Fastify({ logger: cfg.nodeEnv !== 'test' ? { level: 'info', redact: ['req.headers["x-proxy-secret"]', 'req.headers.authorization', 'req.headers.cookie'] } : false, bodyLimit: 3 * 1024 * 1024 });
+export async function buildApp({ db, cfg, integration, ai = new AiService(loadAiConfig({})) }: AppDeps): Promise<FastifyInstance> {
+  const app = Fastify({ logger: cfg.nodeEnv !== 'test' ? { level: 'info', redact: ['req.headers["x-proxy-secret"]', 'req.headers.authorization', 'req.headers.cookie'] } : false, bodyLimit: 3 * 1024 * 1024,
+    // Campos fora do esquema são RECUSADOS (não removidos silenciosamente).
+    ajv: { customOptions: { removeAdditional: false } } });
 
   app.addHook('onSend', async (req, reply, payload) => {
     reply.header('X-Content-Type-Options', 'nosniff');
@@ -194,11 +198,13 @@ export async function buildApp({ db, cfg, integration }: AppDeps): Promise<Fasti
   });
 
   // ───────────── Coleções do aplicativo (regras, tratamento de ocorrências, testes, alterações) ─────────────
-  const COLLECTIONS: Record<string, { table: string; perm: Permission; label: string; ura: (id: string, data: Record<string, unknown>) => string | null; hasUraCol: boolean }> = {
+  const COLLECTIONS: Record<string, { table: string; perm: Permission; label: string; ura: (id: string, data: Record<string, unknown>) => string | null; hasUraCol: boolean; global?: boolean }> = {
     rules: { table: 'alert_rule', perm: 'rules:write', label: 'Regra de alerta', ura: (_i, d) => (d.uraId && d.uraId !== 'all' ? String(d.uraId) : null), hasUraCol: false },
     'occurrence-states': { table: 'occurrence_state', perm: 'occurrences:write', label: 'Ocorrência', ura: (id) => id.split('|').at(-2) ?? null, hasUraCol: false },
     tests: { table: 'test_case', perm: 'tests:write', label: 'Teste', ura: (_i, d) => String(d.uraId ?? ''), hasUraCol: true },
     changes: { table: 'ura_change', perm: 'changes:write', label: 'Alteração de URA', ura: (_i, d) => String(d.uraId ?? ''), hasUraCol: true },
+    // Tratamento das análises da Inteligência CX (não vinculado a uma única URA).
+    'insight-states': { table: 'insight_state', perm: 'occurrences:write', label: 'Análise da Inteligência CX', ura: () => null, hasUraCol: false, global: true },
   };
   const coll = (name: string) => {
     const c = COLLECTIONS[name];
@@ -211,7 +217,7 @@ export async function buildApp({ db, cfg, integration }: AppDeps): Promise<Fasti
     const rows = await db.query<{ id: string; data: Record<string, unknown> }>(`SELECT id, data FROM ${c.table} ORDER BY updated_at DESC LIMIT 5000`);
     const allowed = await allowedUras(req.user);
     return rows.rows.filter((r) => {
-      if (!allowed) return true;
+      if (!allowed || c.global) return true;
       const u = c.ura(r.id, r.data);
       return req.params.name === 'rules' ? !u || allowed.has(u) : !!u && allowed.has(u);
     }).map((r) => ({ ...r.data, id: r.id }));
@@ -225,7 +231,7 @@ export async function buildApp({ db, cfg, integration }: AppDeps): Promise<Fasti
     if (!ID.test(req.params.id) || req.body.id !== req.params.id) throw new HttpError(400, 'Identificador inválido ou divergente.');
     const uraId = c.ura(req.params.id, req.body);
     if (c.hasUraCol && !uraId) throw new HttpError(400, 'uraId é obrigatório.');
-    if (isScoped(req.user)) await assertUra(req, uraId);
+    if (isScoped(req.user) && !c.global) await assertUra(req, uraId);
     if (c.hasUraCol) {
       await db.query(`INSERT INTO ${c.table} (id, ura_id, data, updated_by) VALUES ($1,$2,$3,$4) ON CONFLICT (id) DO UPDATE SET ura_id=EXCLUDED.ura_id, data=EXCLUDED.data, updated_at=now(), updated_by=EXCLUDED.updated_by`,
         [req.params.id, uraId, req.body, req.user.email]);
@@ -243,7 +249,7 @@ export async function buildApp({ db, cfg, integration }: AppDeps): Promise<Fasti
     need(req, c.perm);
     const cur = await db.query<{ data: Record<string, unknown> }>(`SELECT data FROM ${c.table} WHERE id = $1`, [req.params.id]);
     if (!cur.rowCount) return { ok: true };
-    if (isScoped(req.user)) await assertUra(req, c.ura(req.params.id, cur.rows[0].data));
+    if (isScoped(req.user) && !c.global) await assertUra(req, c.ura(req.params.id, cur.rows[0].data));
     await db.query(`DELETE FROM ${c.table} WHERE id = $1`, [req.params.id]);
     await audit(req, `${c.label} excluída`, c.label, req.params.id);
     return { ok: true };
@@ -278,6 +284,28 @@ export async function buildApp({ db, cfg, integration }: AppDeps): Promise<Fasti
     if (!CLIENT_EVENTS.has(req.body.action)) throw new HttpError(400, 'Ação de auditoria não permitida.');
     await audit(req, req.body.action, req.body.entity, req.body.entityId, req.body.details);
     return { ok: true };
+  });
+
+  // ───────────── Inteligência CX: redação opcional por IA ─────────────
+  app.get('/api/ai/status', async () => ai.status());
+
+  app.post<{ Body: AiPayload }>('/api/ai/summary', { schema: { body: AI_PAYLOAD_SCHEMA }, bodyLimit: 200 * 1024 }, async (req, reply) => {
+    need(req, 'metrics:read');
+    if (!ai.cfg.enabled) throw new HttpError(409, 'Redação por IA desativada no servidor.');
+    const pii = findPii(req.body);
+    if (pii) {
+      await audit(req, 'Envio à IA bloqueado', 'Inteligência CX', undefined, `Possível dado pessoal detectado (${pii}).`);
+      throw new HttpError(400, `Envio bloqueado: o conteúdo parece conter dado pessoal (${pii}). Somente agregados podem ser enviados à IA.`);
+    }
+    if (!ai.allow(req.user.id)) return reply.status(429).send({ erro: 'Limite de uso da IA atingido. Tente novamente mais tarde.' });
+    try {
+      const r = await ai.summarize(req.body);
+      await audit(req, 'Resumo gerado por IA', 'Inteligência CX', undefined, `modelo ${r.model} · ${r.inputTokens} tokens de entrada · ${r.outputTokens} de saída · ${req.body.analises.length} análises`);
+      return { text: r.text, model: r.model };
+    } catch (e) {
+      req.log.warn(`IA: ${(e as Error).message}`);
+      throw new HttpError(502, `Não foi possível gerar o resumo por IA: ${(e as Error).message}`);
+    }
   });
 
   // ───────────── Usuários e perfis ─────────────

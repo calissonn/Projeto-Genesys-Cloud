@@ -91,6 +91,15 @@ Com oauth2-proxy (OIDC do Microsoft Entra ID ou outro IdP corporativo), as opç�
 3. Confirme os limites de requisição da organização e ajuste `GENESYS_MAX_REQUESTS_PER_MINUTE`.
 4. Após a primeira coleta, **valide os números** contra *Performance → Flows* da Genesys (especialmente `GENESYS_HUMAN_TRANSFER_TYPES`, que define o que conta como transferência para humano).
 
+### 2.5 Inteligência CX — redação por IA (opcional)
+
+As análises da Inteligência CX funcionam **sem IA generativa**. A redação do resumo por IA (Claude, modelo `claude-opus-5-5`) é opcional:
+
+1. Obtenha a **autorização formal** da Gazin (jurídico/segurança da informação).
+2. Configure no servidor: `AI_ENABLED=true` e `ANTHROPIC_API_KEY` (cofre de segredos). Opcional: `AI_MODEL`, `AI_MAX_PER_USER_PER_HOUR`.
+3. O que é enviado: somente as análises já calculadas (agregados e textos), exatamente o que a tela mostra em “Ver exatamente o que seria enviado”. O servidor recusa campos fora do esquema e qualquer conteúdo com padrão de CPF, telefone ou e-mail.
+4. Cada uso fica na auditoria (modelo e tokens). Para testar sem custo: `npm run mock:anthropic` e `ANTHROPIC_BASE_URL` apontando para ele.
+
 ## 3. Operação
 
 - **Agendador** (`SCHEDULER_ENABLED=true`): dicionários na inicialização e a cada 24 h; coleta incremental a cada 15 min (reprocessa as últimas horas); fechamento diário via job assíncrono na hora `SCHEDULER_DAILY_CLOSE_HOUR`.

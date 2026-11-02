@@ -47,13 +47,7 @@ export function Roadmap({ plan }: { plan: ModulePlan }) {
 export const PLANS: Record<string, ModulePlan> = {
 
 
-  ia: {
-    title: 'Inteligência Artificial CX', stage: 4,
-    summary: 'Análises inteligentes com problema, dados utilizados, evidências, possíveis causas, grau de confiança, recomendação, impacto esperado e forma de validar.',
-    features: ['Tendências e mudanças anormais (detecção estatística antes de qualquer LLM)', 'Etapas com dificuldade recorrente e oportunidades de autosserviço', 'Antes × depois de alterações (por flowVersion)', 'Resumo executivo e priorização do que investigar primeiro', 'Hipóteses sempre rotuladas como hipóteses, nunca como diagnóstico'],
-    requires: ['Dados reais consolidados no PostgreSQL (Etapa 3)', 'Aprovação do uso de API de IA pela Gazin (jurídico/segurança)', 'Envio apenas de agregados anonimizados — nunca gravações, transcrições ou dados pessoais'],
-    related: [{ to: '/comparacao', label: 'Comparação antes × depois com significância' }, { to: '/relatorios', label: 'Relatório executivo (análise por regras)' }],
-  },
+
 
 
 

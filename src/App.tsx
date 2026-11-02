@@ -14,6 +14,7 @@ import { Tests } from './pages/Tests';
 import { Dashboard } from './pages/Dashboard';
 import { FlowMap } from './pages/FlowMap';
 import { Integration } from './pages/Integration';
+import { Intelligence } from './pages/Intelligence';
 import { PLANS, Roadmap } from './pages/Roadmap';
 
 function DataGate({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/relatorios" element={<DataGate><Reports /></DataGate>} />
             <Route path="/testes" element={<DataGate><Tests /></DataGate>} />
             <Route path="/historico" element={<DataGate><ChangeHistory /></DataGate>} />
+            <Route path="/ia" element={<DataGate><Intelligence /></DataGate>} />
             <Route path="/integracao" element={<Integration />} />
             <Route path="/admin" element={<DataGate><Admin /></DataGate>} />
             {Object.entries(PLANS).map(([k, p]) => <Route key={k} path={`/${k}`} element={<Roadmap plan={p} />} />)}

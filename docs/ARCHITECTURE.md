@@ -27,6 +27,7 @@ O front-end **nunca** acessa a Genesys diretamente nem conhece credenciais.
 | `lib/alertEngine.ts` | Avaliação diária das regras com volume mínimo, horário comercial e linha de base; detecção automática de anomalias de falha (z-score ≥ 3 sobre 14 dias, variação absoluta e volume mínimos) |
 | `lib/stepAnalytics.ts` | Desligamentos por etapa e por opção do menu (modelo calibrado) e teste de duas proporções |
 | `lib/reports.ts` | Montagem dos 10 relatórios, com conclusões e recomendações geradas por regras explícitas |
+| `lib/insights.ts` | Motor da Inteligência CX: antes × depois de alterações, tendências, mudanças anormais, etapas recorrentes, oportunidades de autosserviço e metas; priorização e resumo executivo (estatística + regras) |
 | `lib/exporters.ts` | Exportação CSV, Excel (ExcelJS) e PDF (jsPDF + AutoTable), carregadas sob demanda |
 | `data/changeLog.ts`, `data/testSeed.ts` | Histórico de versões e testes de exemplo (simulados) |
 | `services/dataProvider.ts` | Provedor de dados: `mockProvider` (MVP) ou `backendProvider` (`VITE_DATA_SOURCE=backend`) |
@@ -56,6 +57,8 @@ O front-end **nunca** acessa a Genesys diretamente nem conhece credenciais.
 | `src/api/metricsService.ts` | Converte os fatos coletados em registros horários por URA (regras de conversão documentadas no arquivo) |
 | `src/genesys/*` | OAuth Client Credentials, cliente somente leitura (allowlist, limite de taxa, retry 429/5xx, paginação, jobs assíncronos), consultas |
 | `src/sync/*` | Dicionários, coleta por janela, orquestração com locks, backfill retomável, agendador |
+| `src/ai/summary.ts` | Redação opcional por IA (SDK oficial da Anthropic): esquema fechado do payload, bloqueio de dados pessoais, limite por usuário, fallback em caso de recusa |
+| `src/mock/anthropicMock.ts` | API Anthropic **falsa** para testes (sem custo, sem envio de dados) |
 | `src/mock/genesysMock.ts` | Servidor Genesys **simulado** (mesmos formatos dos schemas oficiais) para desenvolvimento e testes |
 | `test/*.test.ts` | Testes unitários e de integração (PostgreSQL real + API + Genesys simulado) |
 
@@ -93,10 +96,18 @@ O front-end **nunca** acessa a Genesys diretamente nem conhece credenciais.
 | 1 | Dashboard, catálogo, mapa interativo, central de alertas, dados simulados | **Concluída (este MVP)** |
 | 2 | Detalhamento por etapa, comparação, falhas, relatórios, histórico, testes | **Concluída** |
 | 3 | Banco, backend, adaptadores Genesys, perfis, Administração | **Concluída** (validada com Genesys simulado; falta credencial real) |
-| 4 | IA CX | Planejada |
+| 4 | Inteligência CX (análises, priorização, IA opcional) | **Concluída** |
 
 ## Notas da Etapa 2
 - **Significância estatística:** comparações de taxas usam teste de duas proporções (aproximação normal, p < 0,05, mínimo de 30 observações por grupo). Indica diferença improvável por acaso — não prova causa.
 - **Conclusões e recomendações** dos relatórios são geradas por regras explícitas e redigidas como hipóteses quando citam causas. Análise por IA fica para a Etapa 4.
 - **Desligamento esperado:** desligamentos após a mensagem de fora do horário não são classificados como problema.
 - **Dependências de exportação:** `exceljs` traz dependências transitivas com alertas moderados do `npm audit` (`minimatch`, `uuid`) que não afetam o uso no navegador (apenas geração de arquivos); reavaliar ao atualizar a biblioteca.
+
+## Notas da Etapa 4 — Inteligência CX
+- **A inteligência é estatística e por regras**, executada no próprio sistema: antes × depois de alterações (teste de duas proporções, p < 0,01), tendências (regressão linear + teste entre metades da janela), mudanças anormais (ocorrências abertas), etapas recorrentes (3 de 4 semanas acima da meta), oportunidades de autosserviço e metas.
+- Cada análise contém: problema, dados utilizados, evidências, possíveis causas (sempre **hipóteses**), grau de confiança com justificativa, recomendação, impacto esperado e forma de validar. As causas e recomendações vêm de uma base de conhecimento explícita no código (`changePlaybook`, `stepPlaybook`), revisável pela equipe de CX.
+- **Priorização:** ligações afetadas por semana (estimativa) × criticidade × confiança.
+- **IA generativa (opcional):** apenas redige o resumo a partir das análises; não calcula números. Desligada por padrão; ver `docs/DEPLOY.md` §2.5.
+- O tratamento das análises (nova, em investigação, ação definida, resolvida, descartada) é gravado (`insight_state`) e auditado.
+- A API recusa campos fora do esquema em todas as rotas (`removeAdditional: false`), em vez de removê-los silenciosamente.

@@ -1,7 +1,7 @@
 {
   "name": "gazin-ura-intelligence-server",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Backend do Gazin URA Intelligence: API, PostgreSQL e integração somente leitura com a Genesys Cloud.",
   "scripts": {
@@ -9,9 +9,11 @@
     "start": "node dist/src/main.js",
     "dev": "npm run build && node --env-file=.env dist/src/main.js",
     "mock:genesys": "npm run build && node dist/src/mock/runMock.js",
-    "test": "npm run build && node --test --test-concurrency=1 dist/test/*.test.js"
+    "test": "npm run build && node --test --test-concurrency=1 dist/test/*.test.js",
+    "mock:anthropic": "npm run build && node dist/src/mock/runAnthropicMock.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.3.0",
     "fastify": "^5.12.7",
     "pg": "^8.13.1"
   },

@@ -37,7 +37,7 @@ export function Layout({ children }: { children: ReactNode }) {
         { to: '/falhas', label: 'Monitoramento de falhas', icon: ShieldAlert, badge: openFailures },
         { to: '/comparacao', label: 'Comparação de períodos', icon: GitCompare },
         { to: '/relatorios', label: 'Relatórios', icon: FileBarChart },
-        { to: '/ia', label: 'Inteligência CX', icon: Bot, stage: 4 },
+        { to: '/ia', label: 'Inteligência CX', icon: Bot },
       ],
     },
     {
@@ -95,7 +95,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </div>
       <div className="border-t border-white/10 px-5 py-3 text-[11px] text-brand-200/80">
         Fonte: <span className="font-medium text-white">{dataSource.label}</span>
-        <div>Versão 0.3 · Etapa 3</div>
+        <div>Versão 0.4 · Etapa 4</div>
       </div>
     </nav>
   );
