@@ -1,5 +1,5 @@
 import { Download, GitCompare, History, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, Delta, EmptyState, Field, Modal, PageHeader, Segmented } from '../components/ui';
 import { CURRENT_USER, useApp } from '../context/AppContext';
@@ -9,6 +9,7 @@ import { addDays, fmtDateLong, todayISO } from '../lib/dates';
 import { fmtPct } from '../lib/format';
 import { rates, sumTotals } from '../lib/metrics';
 import { downloadCsv } from '../lib/exporters';
+import { BACKEND } from '../services/api';
 
 export function ChangeHistory() {
   const [tab, setTab] = useState<'alteracoes' | 'auditoria'>('alteracoes');
@@ -23,7 +24,7 @@ export function ChangeHistory() {
 }
 
 function Changes() {
-  const { changes, uras, departments, store, saveChange } = useApp();
+  const { changes, uras, departments, store, saveChange, can } = useApp();
   const [q, setQ] = useState('');
   const [dept, setDept] = useState('all');
   const [type, setType] = useState('all');
@@ -65,7 +66,7 @@ function Changes() {
           <label><span className="label">Tipo</span>
             <select className="input" value={type} onChange={(e) => setType(e.target.value)}><option value="all">Todos</option>{Object.entries(CHANGE_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
           </label>
-          <button className="btn-primary" onClick={() => setAdding(true)}><Plus className="h-4 w-4" /> Registrar alteração</button>
+          {can('changes:write') && <button className="btn-primary" onClick={() => setAdding(true)}><Plus className="h-4 w-4" /> Registrar alteração</button>}
         </div>
         {list.length === 0 ? <EmptyState title="Nenhuma alteração encontrada" /> : (
           <ol className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -136,16 +137,23 @@ function ChangeForm({ onClose, onSave }: { onClose: () => void; onSave: (c: UraC
 }
 
 function Audit() {
-  const { audit } = useApp();
+  const { can } = useApp();
+  if (!can('audit:read')) return <Card><EmptyState title="Sem permissão" text="Seu perfil não acessa a auditoria." /></Card>;
+  return <AuditView />;
+}
+
+function AuditView() {
+  const { audit, refreshAudit, logAction } = useApp();
+  useEffect(() => { refreshAudit(); }, [refreshAudit]);
   const [q, setQ] = useState('');
   const [entity, setEntity] = useState('all');
   const entities = Array.from(new Set(audit.map((a) => a.entity))).sort();
   const list = audit.filter((a) => (entity === 'all' || a.entity === entity) && (!q || `${a.action} ${a.details ?? ''} ${a.entityId ?? ''}`.toLowerCase().includes(q.toLowerCase())));
   return (
     <Card>
-      <CardHeader title="Auditoria de ações" subtitle={`Ações realizadas neste navegador · usuário: ${CURRENT_USER}`}
+      <CardHeader title="Auditoria de ações" subtitle={BACKEND ? 'Registrada pelo servidor em cada alteração — somente inclusão, não pode ser editada.' : `Ações realizadas neste navegador · usuário: ${CURRENT_USER}`}
         info="No protótipo a trilha fica no navegador. Na Etapa 3 será gravada no PostgreSQL (tabela audit_log), com o usuário autenticado via SSO, e não poderá ser editada."
-        actions={<button className="btn-secondary" disabled={!list.length} onClick={() => downloadCsv('auditoria.csv', [['Data/hora', 'Usuário', 'Ação', 'Entidade', 'ID', 'Detalhes'], ...list.map((a) => [a.at, a.user, a.action, a.entity, a.entityId ?? '', a.details ?? ''])])}><Download className="h-4 w-4" /> Exportar CSV</button>} />
+        actions={<button className="btn-secondary" disabled={!list.length} onClick={() => { logAction('Auditoria exportada', 'Auditoria', undefined, `${list.length} registros`); downloadCsv('auditoria.csv', [['Data/hora', 'Usuário', 'Ação', 'Entidade', 'ID', 'Detalhes'], ...list.map((a) => [a.at, a.user, a.action, a.entity, a.entityId ?? '', a.details ?? ''])]); }}><Download className="h-4 w-4" /> Exportar CSV</button>} />
       <div className="flex flex-wrap gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
         <input className="input max-w-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar ação ou detalhe…" />
         <select className="input w-auto" value={entity} onChange={(e) => setEntity(e.target.value)}><option value="all">Todas as entidades</option>{entities.map((e) => <option key={e}>{e}</option>)}</select>

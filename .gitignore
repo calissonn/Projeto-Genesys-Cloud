@@ -1,5 +1,6 @@
 node_modules
 dist
+dist-backend
 .env
-.env.*
+.env.local
 *.tsbuildinfo

@@ -56,11 +56,5 @@ export const PLANS: Record<string, ModulePlan> = {
   },
 
 
-  admin: {
-    title: 'Administração', stage: 3,
-    summary: 'Cadastros, usuários, perfis de acesso, metas, integrações e auditoria.',
-    features: ['Departamentos, URAs (com IDs de fluxo) e filas', 'Usuários e perfis: Administrador, Analista CX, Supervisor, Gestor', 'Metas personalizadas por indicador e URA', 'Configuração de integrações', 'Histórico de alterações e auditoria de ações'],
-    requires: ['Autenticação corporativa (SSO) no backend', 'Tabelas de usuários, perfis e auditoria (server/db/schema.sql)'],
-    related: [{ to: '/uras', label: 'Catálogo de URAs (cadastro básico)' }, { to: '/historico', label: 'Histórico e auditoria' }],
-  },
+
 };

@@ -20,7 +20,7 @@ export function healthFor(rate: number, warn: number, crit: number, higherIsBad 
 }
 
 export function Dashboard() {
-  const { store, uras, departments, filters, range, prevRange, goals, occurrences } = useApp();
+  const { store, uras, departments, filters, range, prevRange, goals, occurrences, availability } = useApp();
   const c = useChartColors();
   const [trendMode, setTrendMode] = useState<'taxas' | 'volume'>('taxas');
   const [cmpMode, setCmpMode] = useState<'volume' | 'pct'>('pct');
@@ -94,6 +94,10 @@ export function Dashboard() {
   ];
   const axisProps = { stroke: c.axis, tick: { fill: c.text, fontSize: 11 }, tickLine: false, axisLine: { stroke: c.grid } };
   const atendidas = t.transfers - t.queueAbandons;
+  // Sem dados no período anterior não há variação a mostrar.
+  const pp = (a: number, b: number) => (p.entries > 0 ? a - b : null);
+  const noQueue = availability ? !availability.queueAbandons : false;
+  const noUnique = availability ? !availability.unique : false;
 
   return (
     <div>
@@ -119,11 +123,12 @@ export function Dashboard() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <KpiCard label="Entradas nas URAs" value={fmtInt(t.entries)} delta={variation(t.entries, p.entries)}
               info="Total de entradas em fluxos de URA no período. Uma mesma ligação pode gerar mais de uma entrada (ex.: retorno ao fluxo). Em produção: métrica nFlow de Analytics de fluxos." />
-            <KpiCard label="Conversas únicas" value={fmtInt(t.uniqueDistinct)} delta={variation(t.uniqueDistinct, p.uniqueDistinct)}
+            <KpiCard label="Conversas únicas" value={noUnique ? '—' : fmtInt(t.uniqueDistinct)} delta={noUnique ? undefined : variation(t.uniqueDistinct, p.uniqueDistinct)}
+              sub={noUnique ? 'Requer Conversation Details (não coletado)' : undefined}
               info="Ligações distintas que passaram por pelo menos uma URA do escopo, descontando reentradas e ligações encaminhadas de outra URA. Em produção: contagem distinta de conversationId (Conversation Details)." />
             <KpiCard label="Desligamentos na URA" value={fmtInt(t.disconnects)} delta={variation(t.disconnects, p.disconnects)} higherIsBad
               info="Ligações encerradas pelo cliente enquanto estava dentro do fluxo (antes de chegar a uma fila). Não inclui abandono na fila humana." />
-            <KpiCard label="Taxa de desligamento" value={fmtPct(r.disconnectRate)} delta={r.disconnectRate - pr.disconnectRate} deltaUnit=" p.p." higherIsBad
+            <KpiCard label="Taxa de desligamento" value={fmtPct(r.disconnectRate)} delta={pp(r.disconnectRate, pr.disconnectRate)} deltaUnit=" p.p." higherIsBad
               accent={healthFor(r.disconnectRate, goals.disconnectWarn, goals.disconnectCrit)}
               info={`Desligamentos ÷ entradas. Meta: atenção a partir de ${goals.disconnectWarn}%, crítico a partir de ${goals.disconnectCrit}% (configurável).`}
               sub={`Meta: < ${goals.disconnectWarn}%`} />
@@ -134,18 +139,18 @@ export function Dashboard() {
               sub={<Link to="/falhas" className="hover:underline">{fmtInt(t.authFailures)} CPF · {fmtInt(t.integrationErrors)} integração · {fmtInt(t.apiErrors)} API · {fmtInt(t.transferFailures)} transf. · {fmtInt(t.flowErrors)} fluxo</Link>} />
             <KpiCard label="Transferências p/ humano" value={fmtInt(t.transfers)} delta={variation(t.transfers, p.transfers)} higherIsBad
               info="Saídas do fluxo com transferência para fila de atendimento humano (ACD)." />
-            <KpiCard label="Taxa de transferência" value={fmtPct(r.transferRate)} delta={r.transferRate - pr.transferRate} deltaUnit=" p.p." higherIsBad
+            <KpiCard label="Taxa de transferência" value={fmtPct(r.transferRate)} delta={pp(r.transferRate, pr.transferRate)} deltaUnit=" p.p." higherIsBad
               accent={r.transferRate > goals.transferMax ? 'warn' : undefined}
               info={`Transferências ÷ entradas. Meta máxima configurada: ${goals.transferMax}%.`} sub={`Meta: ≤ ${goals.transferMax}%`} />
             <KpiCard label="Autosserviços concluídos" value={fmtInt(t.selfService)} delta={variation(t.selfService, p.selfService)}
               info="Atendimentos resolvidos na própria URA (ex.: 2ª via, saldo, rastreio). Em produção depende de Flow Outcomes marcados como sucesso." />
-            <KpiCard label="Taxa de autosserviço" value={fmtPct(r.selfServiceRate)} delta={r.selfServiceRate - pr.selfServiceRate} deltaUnit=" p.p."
+            <KpiCard label="Taxa de autosserviço" value={fmtPct(r.selfServiceRate)} delta={pp(r.selfServiceRate, pr.selfServiceRate)} deltaUnit=" p.p."
               accent={r.selfServiceRate < goals.selfServiceTarget * 0.8 ? 'warn' : undefined}
               info={`Autosserviços concluídos ÷ entradas. Meta: ${goals.selfServiceTarget}%.`} sub={`Meta: ≥ ${goals.selfServiceTarget}%`} />
-            <KpiCard label="Atendidas por humano" value={fmtInt(atendidas)} delta={variation(atendidas, p.transfers - p.queueAbandons)}
+            <KpiCard label="Atendidas por humano" value={noQueue ? '—' : fmtInt(atendidas)} delta={noQueue ? undefined : variation(atendidas, p.transfers - p.queueAbandons)}
               info="Transferências que não foram abandonadas na fila. Fonte em produção: métricas de fila (Conversation Aggregates), não de fluxo — por isso é exibida separadamente."
-              sub={`${fmtPct(r.queueAbandonRate)} abandonaram na fila`} />
-            <KpiCard label="Taxa de falha de CPF" value={fmtPct(r.authFailureRate)} delta={r.authFailureRate - pr.authFailureRate} deltaUnit=" p.p." higherIsBad
+              sub={noQueue ? 'Requer métricas de fila (não coletadas)' : `${fmtPct(r.queueAbandonRate)} abandonaram na fila`} />
+            <KpiCard label="Taxa de falha de CPF" value={fmtPct(r.authFailureRate)} delta={pp(r.authFailureRate, pr.authFailureRate)} deltaUnit=" p.p." higherIsBad
               accent={healthFor(r.authFailureRate, goals.authFailureWarn, goals.authFailureCrit)}
               info="Tentativas de identificação não validadas ÷ tentativas. Só existe para URAs com identificação por CPF e exige Milestones de tentativa/falha no Architect." />
           </div>

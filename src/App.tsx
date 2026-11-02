@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ErrorState, LoadingState } from './components/ui';
 import { AppProvider, useApp } from './context/AppContext';
+import { Admin } from './pages/Admin';
 import { Alerts } from './pages/Alerts';
 import { Catalog } from './pages/Catalog';
 import { ChangeHistory } from './pages/ChangeHistory';
@@ -17,8 +18,9 @@ import { PLANS, Roadmap } from './pages/Roadmap';
 
 function DataGate({ children }: { children: React.ReactNode }) {
   const { loading, error, reload, store } = useApp();
-  if (error) return <ErrorState message={error} onRetry={reload} />;
-  if (loading || !store) return <LoadingState text="Carregando indicadores das URAs…" />;
+  // Recarregamentos posteriores acontecem em segundo plano, sem desmontar a tela atual.
+  if (error && !store) return <ErrorState message={error} onRetry={reload} />;
+  if (!store) return <LoadingState text={loading ? 'Carregando indicadores das URAs…' : 'Preparando…'} />;
   return <>{children}</>;
 }
 
@@ -36,9 +38,10 @@ export default function App() {
             <Route path="/falhas" element={<DataGate><Failures /></DataGate>} />
             <Route path="/comparacao" element={<DataGate><Compare /></DataGate>} />
             <Route path="/relatorios" element={<DataGate><Reports /></DataGate>} />
-            <Route path="/testes" element={<Tests />} />
+            <Route path="/testes" element={<DataGate><Tests /></DataGate>} />
             <Route path="/historico" element={<DataGate><ChangeHistory /></DataGate>} />
             <Route path="/integracao" element={<Integration />} />
+            <Route path="/admin" element={<DataGate><Admin /></DataGate>} />
             {Object.entries(PLANS).map(([k, p]) => <Route key={k} path={`/${k}`} element={<Roadmap plan={p} />} />)}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

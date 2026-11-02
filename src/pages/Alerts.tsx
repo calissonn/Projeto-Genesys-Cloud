@@ -136,7 +136,7 @@ function refText(o: AlertOccurrence) {
 }
 
 export function OccurrenceDrawer({ o, onClose, onUpdate }: { o: AlertOccurrence; onClose: () => void; onUpdate: (p: { status?: OccurrenceStatus; owner?: string; note?: string }) => void }) {
-  const { uras, departments, rules } = useApp();
+  const { uras, departments, rules, can } = useApp();
   const [note, setNote] = useState('');
   const [owner, setOwner] = useState(o.owner);
   const rule = rules.find((r) => r.id === o.ruleId);
@@ -165,7 +165,7 @@ export function OccurrenceDrawer({ o, onClose, onUpdate }: { o: AlertOccurrence;
             </span>
           )}
         </div>
-        <div className="card space-y-3 p-4">
+        {can('occurrences:write') && <div className="card space-y-3 p-4">
           <h4 className="text-sm font-semibold">Tratamento</h4>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(STATUS_TEXT) as OccurrenceStatus[]).map((s) => (
@@ -180,7 +180,7 @@ export function OccurrenceDrawer({ o, onClose, onUpdate }: { o: AlertOccurrence;
             <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Adicionar comentário ao histórico…" onKeyDown={(e) => { if (e.key === 'Enter' && note.trim()) { onUpdate({ note: note.trim() }); setNote(''); } }} />
             <button className="btn-secondary shrink-0" disabled={!note.trim()} onClick={() => { onUpdate({ note: note.trim() }); setNote(''); }}>Registrar</button>
           </div>
-        </div>
+        </div>}
         <div>
           <h4 className="mb-2 text-sm font-semibold">Histórico</h4>
           <ol className="space-y-3 border-l-2 border-slate-200 pl-4 dark:border-slate-700">
@@ -218,13 +218,14 @@ const Stat = ({ k, v }: { k: string; v: string }) => (
 );
 
 function Rules() {
-  const { rules, saveRule, deleteRule, uras, departments, occurrences } = useApp();
+  const { rules, saveRule, deleteRule, uras, departments, occurrences, can } = useApp();
+  const canWrite = can('rules:write');
   const [editing, setEditing] = useState<AlertRule | null>(null);
   const scopeText = (r: AlertRule) => r.uraId !== 'all' ? uras.find((u) => u.id === r.uraId)?.name ?? r.uraId : r.departmentId !== 'all' ? `Todas — ${departments.find((d) => d.id === r.departmentId)?.name}` : 'Todas as URAs';
   return (
     <>
       <div className="mb-4 flex justify-end">
-        <button className="btn-primary" onClick={() => setEditing(blankRule())}><BellPlus className="h-4 w-4" /> Nova regra</button>
+        {canWrite && <button className="btn-primary" onClick={() => setEditing(blankRule())}><BellPlus className="h-4 w-4" /> Nova regra</button>}
       </div>
       <Card>
         <div className="overflow-x-auto">
@@ -243,11 +244,11 @@ function Rules() {
                   <td className="td text-sm">{r.owner}</td>
                   <td className="td text-right tabular-nums">{occurrences.filter((o) => o.ruleId === r.id).length}</td>
                   <td className="td">
-                    <div className="flex justify-end gap-1">
+                    {canWrite && <div className="flex justify-end gap-1">
                       <button className="btn-ghost p-1.5" title={r.enabled ? 'Pausar' : 'Ativar'} onClick={() => saveRule({ ...r, enabled: !r.enabled })}><Power className={`h-4 w-4 ${r.enabled ? 'text-emerald-600' : ''}`} /></button>
                       <button className="btn-ghost p-1.5" title="Editar" onClick={() => setEditing(r)}><Pencil className="h-4 w-4" /></button>
                       <button className="btn-ghost p-1.5" title="Excluir" onClick={() => confirm(`Excluir a regra "${r.name}"?`) && deleteRule(r.id)}><Trash2 className="h-4 w-4 text-red-500" /></button>
-                    </div>
+                    </div>}
                   </td>
                 </tr>
               ))}

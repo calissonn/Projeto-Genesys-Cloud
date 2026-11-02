@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Drawer, EmptyState, Field, HealthBadge, InfoTip, Modal, PageHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
+import { BACKEND } from '../services/api';
 import type { Ura, UraStatus } from '../data/types';
 import { fmtDateLong } from '../lib/dates';
 import { fmtDuration, fmtInt, fmtPct } from '../lib/format';
@@ -13,7 +14,8 @@ const STATUS_LABEL: Record<UraStatus, string> = { ativa: 'Ativa', 'em-teste': 'E
 type SortKey = 'name' | 'department' | 'entries' | 'disconnectRate' | 'selfServiceRate' | 'lastChange';
 
 export function Catalog() {
-  const { uras, departments, store, range, goals, saveUra, removeUra, setFilters } = useApp();
+  const { uras, departments, store, range, goals, saveUra, removeUra, setFilters, can } = useApp();
+  const canEdit = can('catalog:write');
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const [dept, setDept] = useState('all');
@@ -63,7 +65,7 @@ export function Catalog() {
       <PageHeader
         title="Catálogo de URAs"
         description="Todas as URAs monitoradas, por departamento, com indicadores do período selecionado no filtro global. Clique em uma linha para ver os detalhes."
-        actions={<button className="btn-primary" onClick={() => setEditing(newUra(departments[0].id))}><Plus className="h-4 w-4" /> Nova URA</button>}
+        actions={canEdit && departments.length > 0 && <button className="btn-primary" onClick={() => setEditing(newUra(departments[0].id))}><Plus className="h-4 w-4" /> Nova URA</button>}
       />
       <Card>
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
@@ -137,8 +139,8 @@ export function Catalog() {
             <div className="flex flex-wrap gap-2">
               <button className="btn-primary" onClick={() => nav(`/mapa?ura=${sel.id}`)}><GitBranch className="h-4 w-4" /> Abrir mapa</button>
               <button className="btn-secondary" onClick={() => { setFilters({ departmentId: sel.departmentId, uraId: sel.id }); nav('/'); }}><LayoutDashboard className="h-4 w-4" /> Ver no dashboard</button>
-              <button className="btn-secondary" onClick={() => setEditing(sel)}><Pencil className="h-4 w-4" /> Editar cadastro</button>
-              {sel.userCreated && <button className="btn-danger" onClick={() => { if (confirm(`Remover "${sel.name}" do catálogo?`)) { removeUra(sel.id); setSelected(null); } }}><Trash2 className="h-4 w-4" /> Remover</button>}
+              {canEdit && <button className="btn-secondary" onClick={() => setEditing(sel)}><Pencil className="h-4 w-4" /> Editar cadastro</button>}
+              {canEdit && (sel.userCreated || BACKEND) && <button className="btn-danger" onClick={() => { if (confirm(`Remover "${sel.name}" do catálogo?`)) { void removeUra(sel.id); setSelected(null); } }}><Trash2 className="h-4 w-4" /> Remover</button>}
             </div>
             {selStats ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -179,7 +181,7 @@ export function Catalog() {
         )}
       </Drawer>
 
-      {editing && <UraForm ura={editing} onClose={() => setEditing(null)} onSave={(u) => { saveUra(u); setEditing(null); }} />}
+      {editing && <UraForm ura={editing} onClose={() => setEditing(null)} onSave={async (u) => { await saveUra(u); setEditing(null); }} />}
     </div>
   );
 }
@@ -205,17 +207,19 @@ function newUra(departmentId: string): Ura {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function UraForm({ ura, onClose, onSave }: { ura: Ura; onClose: () => void; onSave: (u: Ura) => void }) {
+function UraForm({ ura, onClose, onSave }: { ura: Ura; onClose: () => void; onSave: (u: Ura) => Promise<void> }) {
   const { departments } = useApp();
   const [f, setF] = useState<Ura>(ura);
   const [queues, setQueues] = useState(ura.queues.join(', '));
   const [err, setErr] = useState<string | null>(null);
   const isNew = !!ura.userCreated && !ura.name;
+  const full = BACKEND || !!ura.userCreated;
   const set = <K extends keyof Ura>(k: K, v: Ura[K]) => setF((p) => ({ ...p, [k]: v }));
   const submit = () => {
     if (!f.name.trim()) return setErr('Informe o nome da URA.');
     if (f.genesysFlowId && !UUID_RE.test(f.genesysFlowId.trim())) return setErr('O ID do fluxo deve estar no formato UUID (ex.: 1a2b3c4d-....). Copie-o do Architect.');
-    onSave({ ...f, name: f.name.trim(), genesysFlowId: f.genesysFlowId?.trim() || null, queues: queues.split(',').map((x) => x.trim()).filter(Boolean) });
+    onSave({ ...f, name: f.name.trim(), genesysFlowId: f.genesysFlowId?.trim() || null, queues: queues.split(',').map((x) => x.trim()).filter(Boolean) })
+      .catch((e: Error) => setErr(e.message));
   };
   return (
     <Modal open onClose={onClose} title={isNew ? 'Cadastrar nova URA' : `Editar: ${ura.name}`}
@@ -223,7 +227,7 @@ function UraForm({ ura, onClose, onSave }: { ura: Ura; onClose: () => void; onSa
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2"><Field label="Nome *"><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="URA Consórcio — Vendas" /></Field></div>
         <Field label="Departamento">
-          <select className="input" value={f.departmentId} disabled={!ura.userCreated} onChange={(e) => set('departmentId', e.target.value)}>
+          <select className="input" value={f.departmentId} disabled={!full} onChange={(e) => set('departmentId', e.target.value)}>
             {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </Field>
@@ -233,25 +237,25 @@ function UraForm({ ura, onClose, onSave }: { ura: Ura; onClose: () => void; onSa
           </select>
         </Field>
         <div className="sm:col-span-2">
-          <Field label="ID do fluxo no Architect (opcional)" hint="Somente referência cadastral. O vínculo só terá efeito quando a integração somente leitura estiver configurada.">
+          <Field label="ID do fluxo no Architect (opcional)" hint={BACKEND ? 'Os dados desta URA são coletados do fluxo informado. Prefira vincular pela Administração (lista de fluxos sincronizados).' : 'Somente referência cadastral no protótipo.'}>
             <input className="input font-mono" value={f.genesysFlowId ?? ''} onChange={(e) => set('genesysFlowId', e.target.value)} placeholder="00000000-0000-0000-0000-000000000000" />
           </Field>
         </div>
         <Field label="Versão"><input className="input" value={f.version} onChange={(e) => set('version', e.target.value)} /></Field>
         <Field label="Responsável"><input className="input" value={f.owner} onChange={(e) => set('owner', e.target.value)} /></Field>
         <Field label="Horário de funcionamento"><input className="input" value={f.businessHours} onChange={(e) => set('businessHours', e.target.value)} /></Field>
-        {ura.userCreated && (
+        {full && (
           <Field label="Filas de destino" hint="Separe por vírgula"><input className="input" value={queues} onChange={(e) => setQueues(e.target.value)} /></Field>
         )}
         <div className="sm:col-span-2"><Field label="Descrição"><textarea className="input" rows={2} value={f.description} onChange={(e) => set('description', e.target.value)} /></Field></div>
-        {ura.userCreated && (
+        {full && (
           <label className="flex items-center gap-2 text-sm sm:col-span-2">
             <input type="checkbox" checked={f.requiresCpf} onChange={(e) => set('requiresCpf', e.target.checked)} /> Possui identificação por CPF
             <InfoTip text="Define se a URA terá indicadores de falha de identificação (dependem de Milestones no Architect)." />
           </label>
         )}
       </div>
-      {!ura.userCreated && <p className="mt-3 text-xs text-slate-500">URAs do catálogo simulado: departamento, filas e menu são fixos neste protótipo.</p>}
+      {!full && <p className="mt-3 text-xs text-slate-500">URAs do catálogo simulado: departamento, filas e menu são fixos neste protótipo.</p>}
       {err && <p className="mt-3 text-sm text-red-600" role="alert">{err}</p>}
     </Modal>
   );

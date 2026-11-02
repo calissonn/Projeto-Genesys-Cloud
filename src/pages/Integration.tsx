@@ -2,6 +2,8 @@ import { CheckCircle2, CircleDashed, Lock, PlugZap, ServerCog } from 'lucide-rea
 import { useState } from 'react';
 import { Card, CardHeader, PageHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
+import { BACKEND } from '../services/api';
+import { IntegrationLive } from './Admin';
 import { FLOW_METRICS, GENESYS_ENDPOINTS, INDICATORS } from '../data/genesysCatalog';
 
 const NATIVE_VS_CONFIG: { indicator: string; native: string; config: string }[] = [
@@ -16,19 +18,20 @@ const NATIVE_VS_CONFIG: { indicator: string; native: string; config: string }[] 
 ];
 
 export function Integration() {
-  const { dataSource, reload } = useApp();
+  const { dataSource, can } = useApp();
   const [ind, setInd] = useState(0);
   const rows = GENESYS_ENDPOINTS.filter((e) => !ind || e.indicators.includes(ind));
   return (
     <div>
-      <PageHeader title="Integração Genesys Cloud" description="Situação da integração e mapa das APIs oficiais que serão consultadas (somente leitura)." />
+      <PageHeader title="Integração Genesys Cloud" description="Situação da integração e mapa das APIs oficiais consultadas (somente leitura)." />
+      {BACKEND && can('integration:read') && <div className="mb-5"><IntegrationLive /></div>}
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-1">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"><PlugZap className="h-5 w-5" /></span>
             <div>
               <div className="text-sm text-slate-500">Situação</div>
-              <div className="font-semibold">{dataSource.kind === 'simulado' ? 'Não configurada' : 'Backend configurado'}</div>
+              <div className="font-semibold">{dataSource.kind === 'simulado' ? 'Não configurada (modo protótipo)' : 'Modo backend'}</div>
             </div>
           </div>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
@@ -42,11 +45,13 @@ export function Integration() {
             <Step done={false} text="Região da organização confirmada (ex.: sa-east-1 → sae1.pure.cloud)" />
             <Step done={false} text="IDs dos fluxos vinculados no Catálogo de URAs" />
             <Step done={false} text="Milestones e Outcomes configurados nos fluxos (para etapas, autosserviço e CPF)" />
-            <Step done={true} text="Arquitetura de backend e adaptadores preparada (pasta server/)" />
+            <Step done={true} text="Backend, banco PostgreSQL e adaptadores somente leitura implementados e testados (pasta server/)" />
           </ul>
-          <button className="btn-secondary mt-4 w-full text-xs" onClick={() => { sessionStorage.setItem('gui-simulate-error', '1'); reload(); }}>
-            Testar tela de erro de carregamento
-          </button>
+          {!BACKEND && (
+            <button className="btn-secondary mt-4 w-full text-xs" onClick={() => { sessionStorage.setItem('gui-simulate-error', '1'); window.location.assign('/'); }}>
+              Testar tela de erro de carregamento
+            </button>
+          )}
         </Card>
         <Card className="lg:col-span-2">
           <CardHeader title="Arquitetura de integração segura" />

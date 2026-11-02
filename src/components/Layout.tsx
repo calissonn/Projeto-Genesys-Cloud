@@ -1,9 +1,10 @@
 import clsx from 'clsx';
 import {
-  Activity, BarChart3, Bell, Bot, ClipboardCheck, FileBarChart, GitBranch, GitCompare, History, LayoutDashboard, Menu, Moon, PhoneOff, Plug, Settings, ShieldAlert, Sun, X, ListTree,
+  Activity, BarChart3, Bell, Bot, ClipboardCheck, FileBarChart, GitBranch, GitCompare, History, LayoutDashboard, Menu, Moon, PhoneOff, Plug, Settings, ShieldAlert, Sun, UserCircle, X, ListTree,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import type { Availability } from '../services/dataProvider';
 import { useApp } from '../context/AppContext';
 import { FAILURE_METRICS } from '../lib/alertEngine';
 import { SimulatedTag } from './ui';
@@ -13,7 +14,7 @@ const FAILURE_SET = new Set<string>(FAILURE_METRICS.map((f) => f.metric));
 interface NavItem { to: string; label: string; icon: typeof Activity; stage?: number; badge?: number }
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { theme, toggleTheme, occurrences, dataSource } = useApp();
+  const { theme, toggleTheme, occurrences, dataSource, user, can, notice, clearNotice, availability } = useApp();
   const [open, setOpen] = useState(false);
   const loc = useLocation();
   const openAlerts = occurrences.filter((o) => o.status === 'aberta').length;
@@ -50,7 +51,7 @@ export function Layout({ children }: { children: ReactNode }) {
       title: 'Configuração',
       items: [
         { to: '/integracao', label: 'Integração Genesys', icon: Plug },
-        { to: '/admin', label: 'Administração', icon: Settings, stage: 3 },
+        ...(can('catalog:write') || can('users:manage') || can('integration:read') ? [{ to: '/admin', label: 'Administração', icon: Settings }] : []),
       ],
     },
   ];
@@ -94,7 +95,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </div>
       <div className="border-t border-white/10 px-5 py-3 text-[11px] text-brand-200/80">
         Fonte: <span className="font-medium text-white">{dataSource.label}</span>
-        <div>Versão 0.2 · Etapa 2</div>
+        <div>Versão 0.3 · Etapa 3</div>
       </div>
     </nav>
   );
@@ -116,13 +117,40 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="hidden truncate text-sm text-slate-500 sm:block dark:text-slate-400">Gazin · Central de monitoramento de URAs</div>
           <div className="ml-auto flex items-center gap-2">
             {dataSource.kind === 'simulado' && <SimulatedTag />}
+            {user && dataSource.kind !== 'simulado' && (
+              <span className="hidden items-center gap-2 text-right text-xs leading-tight sm:flex" title={user.email}>
+                <span><span className="block font-medium text-slate-700 dark:text-slate-200">{user.name}</span><span className="text-slate-500">{user.profileLabel}</span></span>
+                <UserCircle className="h-6 w-6 text-slate-400" />
+              </span>
+            )}
             <button className="btn-ghost p-2" onClick={toggleTheme} aria-label="Alternar modo claro/escuro" title="Alternar modo claro/escuro">
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
           </div>
         </header>
+        {notice && (
+          <div className="mx-auto mt-4 flex max-w-[1500px] items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200 sm:mx-6" role="alert">
+            <span className="flex-1">Não foi possível concluir a operação: {notice}</span>
+            <button className="btn-ghost p-1" onClick={clearNotice} aria-label="Fechar aviso"><X className="h-4 w-4" /></button>
+          </div>
+        )}
+        {availability && missing(availability).length > 0 && (
+          <div className="mx-auto mt-4 max-w-[1500px] rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-xs text-violet-900 dark:border-violet-900 dark:bg-violet-950/50 dark:text-violet-100 sm:mx-6">
+            <b>Indicadores sem instrumentação na Genesys</b> (aparecem zerados ou iguais a outro indicador): {missing(availability).join(' · ')}.{' '}
+            {can('integration:read') && <Link to="/admin" className="underline">Configurar instrumentação</Link>}
+          </div>
+        )}
         <main key={loc.pathname} className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">{children}</main>
       </div>
     </div>
   );
+}
+
+const AVAIL_LABEL: [keyof Availability, string][] = [
+  ['unique', 'conversas únicas (= entradas)'], ['queueAbandons', 'abandono na fila'], ['transfers', 'transferências por destino'],
+  ['selfService', 'autosserviço'], ['authentication', 'identificação por CPF'], ['integrationErrors', 'erros de integração'],
+  ['apiErrors', 'falhas de API'], ['flowErrors', 'erros de fluxo'], ['invalidOptions', 'opção inválida'], ['transferFailures', 'transferências malsucedidas'],
+];
+function missing(a: Availability) {
+  return AVAIL_LABEL.filter(([k]) => !a[k]).map(([, l]) => l);
 }

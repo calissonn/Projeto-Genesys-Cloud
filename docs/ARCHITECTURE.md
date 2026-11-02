@@ -39,42 +39,60 @@ O front-end **nunca** acessa a Genesys diretamente nem conhece credenciais.
 - No consolidado multi-URA, conversas que passaram por mais de uma URA são descontadas (`inherited`).
 - Desligamento na URA (fluxo) é separado de abandono na fila (após transferência).
 
-### Persistência no MVP
-Preferências, metas, regras de alerta, tratamento de ocorrências, URAs cadastradas, testes (com evidências até 300 KB), alterações registradas e auditoria ficam no `localStorage` do navegador (protótipo).
-Na Etapa 3 migram para o PostgreSQL (`server/src/db/schema.sql`) com auditoria.
+### Persistência
+- **Modo protótipo** (padrão): preferências, metas, regras, tratamento de ocorrências, URAs cadastradas, testes, alterações e auditoria ficam no `localStorage` do navegador.
+- **Modo backend** (`VITE_DATA_SOURCE=backend`, `npm run dev:backend`): tudo é lido e gravado pela API (`services/api.ts`, `lib/useCollection.ts`); o servidor audita cada alteração. A escolha é fixa no build.
 
 ## Backend (`server/`)
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `src/config.ts` | Lê credenciais **apenas** de variáveis de ambiente / cofre |
-| `src/genesys/auth.ts` | OAuth Client Credentials, cache e renovação antecipada do token, chamadas concorrentes compartilham a mesma renovação |
-| `src/genesys/allowlist.ts` | Lista de endpoints permitidos (GET e POST de consulta). Ações (`/flows/actions/*`, POST/PUT/DELETE de configuração) são bloqueadas |
-| `src/genesys/client.ts` | Limitador de taxa, retry com backoff exponencial e `Retry-After` em 429/5xx, renovação em 401, timeout, paginação por página e por cursor, jobs assíncronos |
-| `src/genesys/queries.ts` | Consultas de agregados usando apenas métricas/dimensões oficiais |
-| `src/collectors/` | Coleta horária e histórica, mapeamento da resposta, upsert idempotente, registro em `sync_run` |
-| `src/db/schema.sql` | Esquema PostgreSQL |
-| `test/` | Testes (allowlist, retry 429, bloqueio, mapeamento) |
+| `src/main.ts` | Inicialização: configuração, migrações, API, agendador |
+| `src/config.ts` | Variáveis de ambiente; bloqueia configurações inseguras em produção |
+| `src/db/migrations/*.sql`, `src/db/migrate.ts` | Esquema PostgreSQL versionado (com advisory lock) |
+| `src/auth/identity.ts` | Identidade via proxy de SSO (cabeçalho + segredo compartilhado) ou modo dev |
+| `src/auth/rbac.ts` | Perfis (Administrador, Analista CX, Supervisor, Gestor), permissões e escopo por departamento |
+| `src/api/app.ts` | API REST (Fastify): catálogo, métricas, coleções, metas, usuários, auditoria, integração; validação de entrada e cabeçalhos de segurança |
+| `src/api/metricsService.ts` | Converte os fatos coletados em registros horários por URA (regras de conversão documentadas no arquivo) |
+| `src/genesys/*` | OAuth Client Credentials, cliente somente leitura (allowlist, limite de taxa, retry 429/5xx, paginação, jobs assíncronos), consultas |
+| `src/sync/*` | Dicionários, coleta por janela, orquestração com locks, backfill retomável, agendador |
+| `src/mock/genesysMock.ts` | Servidor Genesys **simulado** (mesmos formatos dos schemas oficiais) para desenvolvimento e testes |
+| `test/*.test.ts` | Testes unitários e de integração (PostgreSQL real + API + Genesys simulado) |
+
+### Modelo de dados
+- **Cadastros:** `department`, `ura` (com `genesys_flow_id` único), `queue`.
+- **Acesso:** `app_user`, `user_department` (escopo do supervisor), `audit_log` (somente inclusão).
+- **Aplicação:** `app_setting` (metas), `alert_rule`, `occurrence_state`, `test_case`, `ura_change` (JSON no mesmo formato do front-end).
+- **Dicionários Genesys:** `genesys_flow`, `genesys_flow_version`, `genesys_milestone`, `genesys_outcome`, `instrumentation_map` (papel de cada milestone/outcome).
+- **Fatos:** `flow_hour` (nFlow, tFlow, tFlowDisconnect, tFlowExit por fluxo/versão/hora) e `flow_dimension_hour` (milestones, outcomes, destinos).
+- **Operação:** `sync_run` (cada coleta), `backfill_window` (retomada do histórico).
 
 ### Estratégia de sincronização
-1. **Dicionários (diário):** flows (`type=INBOUNDCALL`), versões, milestones, outcomes, filas, call routes.
-2. **Incremental (15 min):** agregados `PT1H` das últimas 2 horas (reprocessa para capturar dados tardios).
-3. **Fechamento (diário):** D-1 completo via job assíncrono.
-4. **Backfill histórico:** jobs assíncronos em janelas (ex.: 7 dias), com retomada a partir de `sync_run`.
+1. **Dicionários** (inicialização e diário): fluxos `INBOUNDCALL`, versões dos fluxos vinculados (viram registros no Histórico), milestones, outcomes, filas. Ao vincular um fluxo a uma URA, as versões são importadas na hora.
+2. **Incremental** (15 min): agregados `PT1H` das últimas horas, reprocessando para capturar dados tardios (upsert idempotente).
+3. **Fechamento** (diário): últimas 24 h via job assíncrono.
+4. **Backfill**: janelas de 7 dias via jobs assíncronos; janelas com erro ficam pendentes e são retomadas.
+5. Cada tipo de coleta usa um advisory lock — nunca roda em duplicidade, mesmo com várias instâncias.
+
+### Limitações conhecidas (dados reais)
+- **Conversas únicas** e **abandono na fila** não vêm dos agregados de fluxo: exigem Conversation Details / métricas de fila (próxima evolução). A interface mostra “—” e um aviso.
+- **Mapa inteligente** em modo backend: as etapas dependem de Milestones mapeadas; a montagem automática do grafo a partir da configuração do fluxo (`/versions/{id}/configuration`) é a próxima evolução.
+- Regras de conversão (ex.: `transferType` = transferência humana) devem ser validadas com dados reais.
 
 ## Segurança e LGPD
 - Credenciais só no servidor; função OAuth com permissões `:view`/`:search`.
 - Allowlist impede qualquer escrita na Genesys.
 - Armazenamento apenas de agregados; ANI, CPF, nomes, gravações e transcrições não são persistidos.
 - IA (Etapa 4): somente agregados anonimizados e após autorização formal.
-- Autenticação corporativa (SSO/OIDC), perfis (Administrador, Analista CX, Supervisor, Gestor) e trilha de auditoria — Etapa 3.
+- Autenticação corporativa via proxy de SSO; perfis com escopo por departamento aplicados no servidor; auditoria imutável no banco.
+- Credenciais da Genesys só no servidor; cliente com allowlist somente leitura (testado: toda chamada feita ao Genesys simulado é verificada contra a allowlist).
 
 ## Roadmap
 | Etapa | Escopo | Situação |
 |---|---|---|
 | 1 | Dashboard, catálogo, mapa interativo, central de alertas, dados simulados | **Concluída (este MVP)** |
 | 2 | Detalhamento por etapa, comparação, falhas, relatórios, histórico, testes | **Concluída** |
-| 3 | Banco, backend, adaptadores Genesys | **Estrutura criada** em `server/` (não conectada) |
+| 3 | Banco, backend, adaptadores Genesys, perfis, Administração | **Concluída** (validada com Genesys simulado; falta credencial real) |
 | 4 | IA CX | Planejada |
 
 ## Notas da Etapa 2

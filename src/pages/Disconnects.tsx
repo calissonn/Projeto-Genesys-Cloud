@@ -22,7 +22,7 @@ function weekStart(iso: string) {
 }
 
 export function Disconnects() {
-  const { store, uras, departments, filters, range, prevRange, goals } = useApp();
+  const { store, uras, departments, filters, range, prevRange, goals, availability } = useApp();
   const c = useChartColors();
   const [grain, setGrain] = useState<'dia' | 'semana'>('dia');
   const [evoMetric, setEvoMetric] = useState<'taxa' | 'volume'>('taxa');
@@ -114,10 +114,10 @@ export function Disconnects() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <KpiCard label="Desligamentos na URA" value={fmtInt(t.disconnects)} delta={variation(t.disconnects, p.disconnects)} higherIsBad
           info="Cliente encerrou a ligação enquanto estava dentro do fluxo da URA. Em produção: tFlowDisconnect (count)." />
-        <KpiCard label="Taxa de desligamento" value={fmtPct(r.disconnectRate)} delta={r.disconnectRate - pr.disconnectRate} deltaUnit=" p.p." higherIsBad
+        <KpiCard label="Taxa de desligamento" value={fmtPct(r.disconnectRate)} delta={p.entries > 0 ? r.disconnectRate - pr.disconnectRate : null} deltaUnit=" p.p." higherIsBad
           accent={healthFor(r.disconnectRate, goals.disconnectWarn, goals.disconnectCrit)} sub={`Atenção ≥ ${goals.disconnectWarn}% · Crítico ≥ ${goals.disconnectCrit}%`}
           info="Desligamentos na URA ÷ entradas. Classificação conforme metas configuráveis (botão Metas e classificação)." />
-        <KpiCard label="Abandono na fila (após URA)" value={fmtInt(t.queueAbandons)} delta={variation(t.queueAbandons, p.queueAbandons)} higherIsBad
+        <KpiCard label="Abandono na fila (após URA)" value={availability && !availability.queueAbandons ? '—' : fmtInt(t.queueAbandons)} delta={variation(t.queueAbandons, p.queueAbandons)} higherIsBad
           sub={`${fmtPct(r.queueAbandonRate)} das transferências`}
           info="Cliente foi transferido e desligou enquanto aguardava na fila humana. NÃO é desligamento na URA. Em produção: métricas de fila (Conversation Aggregates)." />
         <KpiCard label="Principal ponto de saída" value={topStep?.category ?? '—'} info="Etapa da URA com maior número absoluto de desligamentos no período (depende de Milestones em produção)."

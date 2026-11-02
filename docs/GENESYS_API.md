@@ -378,7 +378,7 @@ próprio. O Gazin URA Intelligence **não altera fluxos** — apenas lê.
 
 ## 6. Integração com o Gazin URA Intelligence
 
-Ver [`ARCHITECTURE.md`](ARCHITECTURE.md) e o código em [`../server`](../server). Resumo:
+**Implementado na Etapa 3** — ver [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DEPLOY.md`](DEPLOY.md) e o código em [`../server`](../server). Resumo:
 
 ```
 Navegador (React)  ──HTTPS+SSO──▶  Backend Node.js (API própria /api/*)

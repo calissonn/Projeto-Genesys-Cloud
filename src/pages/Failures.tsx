@@ -28,7 +28,7 @@ const SOURCE: Record<string, string> = {
 };
 
 export function Failures() {
-  const { store, uras, departments, filters, range, prevRange, occurrences, updateOccurrence, rules, saveRule } = useApp();
+  const { store, uras, departments, filters, range, prevRange, occurrences, updateOccurrence, rules, saveRule, can } = useApp();
   const c = useChartColors();
   const [sel, setSel] = useState<string | null>(null);
   const [status, setStatus] = useState<'all' | OccurrenceStatus>('all');
@@ -142,7 +142,7 @@ export function Failures() {
 
       <Card className="mt-5">
         <CardHeader title="Regras personalizadas de falha" subtitle="Ex.: “se a falha de identificação por CPF aumentar significativamente, gerar alerta para investigação”"
-          actions={<button className="btn-primary" onClick={() => setEditing({ ...blankRule('authFailureRate'), name: '', condition: 'aumento_pct', threshold: 40, severity: 'alta' })}><BellPlus className="h-4 w-4" /> Nova regra de falha</button>} />
+          actions={can('rules:write') && <button className="btn-primary" onClick={() => setEditing({ ...blankRule('authFailureRate'), name: '', condition: 'aumento_pct', threshold: 40, severity: 'alta' })}><BellPlus className="h-4 w-4" /> Nova regra de falha</button>} />
         {failureRules.length === 0 ? <EmptyState title="Nenhuma regra de falha" text="A detecção automática continua ativa. Crie regras para limites específicos." /> : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {failureRules.map((r) => (

@@ -22,7 +22,8 @@ function StatusBadge({ s }: { s: TestStatus }) {
 const newId = () => `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
 
 export function Tests() {
-  const { tests, uras, saveTest, deleteTest } = useApp();
+  const { tests, uras, saveTest, deleteTest, can } = useApp();
+  const canWrite = can('tests:write') && uras.length > 0;
   const [q, setQ] = useState('');
   const [ura, setUra] = useState('all');
   const [status, setStatus] = useState<'all' | TestStatus>('all');
@@ -62,7 +63,7 @@ export function Tests() {
     <div>
       <PageHeader title="Gestão de testes das URAs"
         description="Registre os testes funcionais antes de publicar alterações. Os testes ficam organizados por URA e versão, com evidências e histórico."
-        actions={<>
+        actions={canWrite && <>
           <button className="btn-secondary" onClick={() => setPlanOpen(true)}><ListChecks className="h-4 w-4" /> Gerar roteiro padrão</button>
           <button className="btn-primary" onClick={() => setEditing(blank())}><Plus className="h-4 w-4" /> Novo teste</button>
         </>} />
@@ -119,11 +120,11 @@ export function Tests() {
                           <td className="td whitespace-nowrap text-slate-500">{fmtDateLong(t.date)}</td>
                           <td className="td">{t.evidences.length ? <span className="inline-flex items-center gap-1 text-xs"><Paperclip className="h-3 w-3" />{t.evidences.length}</span> : <span className="text-xs text-slate-400">—</span>}</td>
                           <td className="td" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end gap-1">
+                            {canWrite && <div className="flex justify-end gap-1">
                               <button className="btn-ghost p-1.5" title="Editar" onClick={() => setEditing(t)}><Pencil className="h-4 w-4" /></button>
                               <button className="btn-ghost p-1.5" title="Reexecutar em nova versão" onClick={() => setEditing({ ...t, id: newId(), version: '', status: 'pendente', obtained: '', evidences: [], history: [], date: todayISO() })}><Copy className="h-4 w-4" /></button>
                               <button className="btn-ghost p-1.5" title="Excluir" onClick={() => confirm(`Excluir o teste "${t.title}"?`) && deleteTest(t.id)}><Trash2 className="h-4 w-4 text-red-500" /></button>
-                            </div>
+                            </div>}
                           </td>
                         </tr>
                       ))}
@@ -137,7 +138,7 @@ export function Tests() {
       )}
 
       {editing && <TestForm test={editing} existing={tests.some((t) => t.id === editing.id)} onClose={() => setEditing(null)} onSave={(t) => { saveTest(t); setEditing(null); }} />}
-      {viewTest && <TestDrawer t={viewTest} uraName={uraName(viewTest.uraId)} onClose={() => setViewing(null)} onEdit={() => { setEditing(viewTest); setViewing(null); }} />}
+      {viewTest && <TestDrawer t={viewTest} uraName={uraName(viewTest.uraId)} onClose={() => setViewing(null)} onEdit={canWrite ? () => { setEditing(viewTest); setViewing(null); } : undefined} />}
       {planOpen && <PlanModal onClose={() => setPlanOpen(false)} />}
     </div>
   );
@@ -217,11 +218,11 @@ function TestForm({ test, existing, onClose, onSave }: { test: TestCase; existin
   );
 }
 
-function TestDrawer({ t, uraName, onClose, onEdit }: { t: TestCase; uraName: string; onClose: () => void; onEdit: () => void }) {
+function TestDrawer({ t, uraName, onClose, onEdit }: { t: TestCase; uraName: string; onClose: () => void; onEdit?: () => void }) {
   return (
     <Drawer open onClose={onClose} title={t.title} subtitle={`${uraName} · ${t.version} · ${t.scenario}`}>
       <div className="space-y-5 text-sm">
-        <div className="flex items-center gap-2"><StatusBadge s={t.status} /><span className="text-slate-500">{t.owner} · {fmtDateLong(t.date)}</span><button className="btn-secondary ml-auto py-1.5 text-xs" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /> Editar</button></div>
+        <div className="flex items-center gap-2"><StatusBadge s={t.status} /><span className="text-slate-500">{t.owner} · {fmtDateLong(t.date)}</span>{onEdit && <button className="btn-secondary ml-auto py-1.5 text-xs" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /> Editar</button>}</div>
         {t.steps && <Block title="Passos"><pre className="whitespace-pre-wrap font-sans">{t.steps}</pre></Block>}
         <div className="grid gap-4 sm:grid-cols-2">
           <Block title="Comportamento esperado">{t.expected}</Block>

@@ -8,7 +8,8 @@ export class GenesysApiError extends Error {
 }
 
 export interface ClientOptions {
-  regionDomain: string;
+  /** Ex.: https://api.sae1.pure.cloud */
+  apiBaseUrl: string;
   maxRequestsPerMinute: number;
   maxRetries?: number;
   timeoutMs?: number;
@@ -31,9 +32,11 @@ export class GenesysClient {
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
   private sent: number[] = [];
+  /** Contadores para diagnóstico (expostos no status da integração). */
+  readonly stats = { requests: 0, retries: 0, rateLimited: 0, errors: 0 };
 
   constructor(private readonly auth: GenesysAuth, private readonly opts: ClientOptions) {
-    this.base = `https://api.${opts.regionDomain}`;
+    this.base = opts.apiBaseUrl.replace(/\/$/, '');
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.sleep = opts.sleep ?? defaultSleep;
   }
@@ -72,6 +75,7 @@ export class GenesysClient {
     for (let attempt = 0; ; attempt++) {
       await this.throttle();
       const token = await this.auth.getToken();
+      this.stats.requests++;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), this.opts.timeoutMs ?? 60_000);
       let res: Response;
@@ -96,11 +100,14 @@ export class GenesysClient {
         continue;
       }
       const retryable = res.status === 429 || res.status === 408 || res.status >= 500;
+      if (res.status === 429) this.stats.rateLimited++;
       if (retryable && attempt < maxRetries) {
+        this.stats.retries++;
         const ra = Number(res.headers.get('retry-after'));
         await this.sleep(Number.isFinite(ra) && ra > 0 ? ra * 1000 : backoff(attempt));
         continue;
       }
+      this.stats.errors++;
       throw new GenesysApiError(`Genesys respondeu HTTP ${res.status} em ${method} ${path}`, res.status, path);
     }
   }

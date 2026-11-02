@@ -1,6 +1,7 @@
 /**
  * OAuth Client Credentials da Genesys Cloud.
  * POST https://login.{região}/oauth/token  (grant_type=client_credentials, Basic auth)
+ * `loginBaseUrl` = https://login.{região} (ou o servidor simulado nos testes).
  * O token fica apenas em memória do servidor e é renovado antes de expirar.
  */
 export interface TokenResponse {
@@ -15,7 +16,8 @@ export class GenesysAuth {
   private inflight: Promise<string> | null = null;
 
   constructor(
-    private readonly regionDomain: string,
+    /** Ex.: https://login.sae1.pure.cloud */
+    private readonly loginBaseUrl: string,
     private readonly clientId: string,
     private readonly clientSecret: string,
     private readonly fetchImpl: typeof fetch = fetch,
@@ -40,7 +42,7 @@ export class GenesysAuth {
 
   private async fetchToken(): Promise<string> {
     const basic = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-    const res = await this.fetchImpl(`https://login.${this.regionDomain}/oauth/token`, {
+    const res = await this.fetchImpl(`${this.loginBaseUrl}/oauth/token`, {
       method: 'POST',
       headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'grant_type=client_credentials',

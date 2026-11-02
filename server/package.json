@@ -1,16 +1,18 @@
 {
   "name": "gazin-ura-intelligence-server",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Backend somente leitura de integração com a Genesys Cloud (Etapa 3 — estrutura).",
+  "description": "Backend do Gazin URA Intelligence: API, PostgreSQL e integração somente leitura com a Genesys Cloud.",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/src/http/server.js",
-    "collect:once": "node dist/src/collectors/runOnce.js",
-    "test": "tsc -p tsconfig.json && node --test dist/test/*.test.js"
+    "build": "tsc -p tsconfig.json && node scripts/copy-sql.mjs",
+    "start": "node dist/src/main.js",
+    "dev": "npm run build && node --env-file=.env dist/src/main.js",
+    "mock:genesys": "npm run build && node dist/src/mock/runMock.js",
+    "test": "npm run build && node --test --test-concurrency=1 dist/test/*.test.js"
   },
   "dependencies": {
+    "fastify": "^5.12.7",
     "pg": "^8.13.1"
   },
   "devDependencies": {
