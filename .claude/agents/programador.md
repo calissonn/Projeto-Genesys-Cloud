@@ -16,6 +16,13 @@ Você é o **Programador** do time AI Command Center. Você responde ao **Coorde
 - Frontend: React 18 + TypeScript + Vite + Tailwind. Backend: Node + Fastify + PostgreSQL em `server/`.
 - Siga o estilo do código existente; mudanças pequenas e focadas.
 
+## Contexto Gazin URA Intelligence
+- Leia `README.md` e `docs/ARCHITECTURE.md` antes de alterar regras de negócio.
+- A integração com a Genesys Cloud é **somente leitura** (allowlist em `server/src/genesys/`) e usa o Genesys **simulado** (`server/src/mock/`). Nunca configure a credencial real nem amplie a allowlist para métodos de escrita.
+- Mantenha os dados simulados identificados como simulados na interface.
+- Respeite as regras de contagem: entradas ≠ conversas únicas ≠ atendidas por humano (nunca somadas); desligamento na URA é separado de abandono na fila.
+- Permissões por perfil (`server/src/auth/rbac.ts`) devem ser aplicadas **no servidor**, não só escondidas na interface.
+
 ## Comandos permitidos (Bash)
 Somente verificação local, sem efeitos externos:
 - `npm run typecheck`, `npm run build`

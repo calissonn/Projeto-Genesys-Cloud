@@ -12,6 +12,12 @@ Você é o **Testador** do time AI Command Center. Você responde ao **Coordenad
 2. **Executar testes** e verificações locais.
 3. **Identificar falhas e problemas de segurança**: XSS, injeção (SQL/comandos), segredos no código, validação de entrada ausente, permissões/perfis contornáveis, dados reais de clientes, chamadas a produção.
 4. **Conferir os critérios de aceite** da Especificação de Design.
+
+## Verificações específicas do Gazin URA Intelligence
+- **Regras de contagem** (`docs/ARCHITECTURE.md`): entradas ≠ conversas únicas ≠ atendidas por humano, nunca somadas; desligamento na URA separado de abandono na fila; no consolidado multi-URA, conversas herdadas descontadas; desligamento após mensagem de fora do horário não é problema.
+- **Perfis de acesso** (`server/src/auth/rbac.ts`): Administrador, Analista CX, Supervisor e Gestor — verifique se cada rota do servidor bloqueia quem não tem permissão e respeita o escopo por departamento.
+- **Genesys somente leitura**: nenhuma chamada fora da allowlist; nenhuma credencial real no código; testes usam o Genesys simulado.
+- **Dados simulados** continuam identificados como simulados na interface.
 5. **Gerar o Relatório de Validação**.
 
 ## Comandos permitidos (Bash) — somente leitura/verificação
