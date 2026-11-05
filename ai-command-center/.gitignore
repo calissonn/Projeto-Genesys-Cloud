@@ -1,0 +1,8 @@
+node_modules
+.next
+dist
+data/
+workspaces/
+.env
+.env.local
+*.tsbuildinfo

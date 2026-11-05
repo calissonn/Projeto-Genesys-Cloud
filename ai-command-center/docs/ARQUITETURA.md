@@ -1,17 +1,15 @@
 # AI Command Center — Proposta de arquitetura do MVP
 
-> **Status: proposta aguardando aprovação.** Nenhuma dependência foi instalada e nenhum código foi escrito.
-> Este documento cobre os 6 itens pedidos antes da implementação: arquitetura, conexão agentes ↔ prédio,
-> estrutura de pastas, dependências, custos/riscos e plano em etapas.
+> **Status: aprovada.** Decisões: repositório próprio, SQLite no MVP (Supabase depois), Sonnet como modelo padrão
+> do modo real. Etapa 1 implementada — ver [README](../README.md).
 
 ---
 
-## 0. Decisão preliminar: onde o projeto vai morar
+## 0. Decisões tomadas
 
-Este repositório já contém outro sistema (Gazin URA Intelligence — Vite + React + `server/`).
-Proposta: criar o AI Command Center na pasta **`ai-command-center/`**, totalmente independente
-(próprio `package.json`, sem tocar no código existente). Se preferir um repositório separado,
-a estrutura abaixo se move sem alterações.
+- **Repositório:** projeto independente (próprio `package.json`), em repositório próprio.
+- **Banco no MVP:** SQLite local; Supabase em etapa futura, atrás da interface `Repository`.
+- **Modelo padrão do modo real:** Sonnet (`ACC_MODEL=sonnet`).
 
 ---
 
@@ -240,9 +238,3 @@ Cada etapa termina com: testes executados, resumo do que foi feito, o que falta 
 segurança, dados, atendimento, automação), salas de reunião com vários agentes, edição de andares, custos por período.
 
 ---
-
-## Pontos para sua decisão
-
-1. **Local do projeto:** pasta `ai-command-center/` neste repositório (recomendado) ou repositório novo?
-2. **Banco no MVP:** SQLite local agora e Supabase depois (recomendado) ou Supabase desde a Etapa 1?
-3. **Modelo padrão para os agentes no modo real:** Sonnet (recomendado, melhor custo) ou Opus?
