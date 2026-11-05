@@ -10,8 +10,8 @@ Arquitetura completa, custos, riscos e plano: **[docs/ARQUITETURA.md](docs/ARQUI
 | Etapa | Situação |
 |---|---|
 | 1. Fundação (orquestrador, eventos, banco, modo demo) | ✅ concluída |
-| 2. Prédio animado (Next.js + Phaser) | ⏳ próxima |
-| 3. Central de Comando | ⏳ |
+| 2. Prédio animado (Next.js + Phaser) | ✅ concluída |
+| 3. Central de Comando | ⏳ próxima |
 | 4. Execução real com Claude Code (Agent SDK) | ⏳ |
 | 5. Acabamento | ⏳ |
 
@@ -26,13 +26,52 @@ Arquitetura completa, custos, riscos e plano: **[docs/ARQUITETURA.md](docs/ARQUI
 
 ```bash
 npm install
-cp .env.example .env      # defina ACC_TOKEN com um valor aleatório longo
-npm run dev               # orquestrador em http://127.0.0.1:4317
-npm test                  # testes automatizados
-npm run typecheck
+cp .env.example .env      # defina ACC_TOKEN com um valor aleatório longo (obrigatório para a web)
+npm run dev               # orquestrador (127.0.0.1:4317) + web (http://localhost:3000)
 ```
 
-## Experimentar a API (Etapa 1)
+Abra **http://localhost:3000**: o prédio aparece com os agentes ociosos na copa. Crie um projeto no painel
+da direita, aprove o plano na **Fila de aprovação** e acompanhe os personagens trabalhando. Clique num
+personagem (ou no nome dele abaixo do prédio) para abrir o painel com tarefa, tempo, histórico, arquivos,
+testes, erros e os detalhes da execução.
+
+## Testes
+
+```bash
+npm test                  # unitários e de integração (orquestrador + web)
+npm run typecheck
+npm run build && npm run test:e2e   # ponta a ponta no navegador; gera capturas em e2e/screenshots/
+```
+
+O teste ponta a ponta precisa do Playwright com Chromium (`npm i -D playwright && npx playwright install chromium`).
+
+## Prédio animado (Etapa 2)
+
+| Estado real do agente | O que o personagem faz |
+|---|---|
+| Ocioso | vai para a copa do andar e toma café |
+| Em reunião (coordenadora planejando) | vai à mesa de reunião da Diretoria |
+| Analisando | senta na mesa, ícone de lupa, gráficos no monitor |
+| Escrevendo código | senta e digita, código rolando no monitor |
+| Executando testes | testador vai ao laboratório (2º andar); barra de progresso no monitor |
+| Conversando | vai (de elevador, se preciso) até o colega que fez a tarefa anterior |
+| Aguardando aprovação | levanta a mão com balão “!” piscando; o monitor do administrador e a central de aprovações acendem |
+| Concluído | comemora com balão ✔ e depois volta para a copa |
+| Erro | fica cabisbaixo com balão ✖ e monitor vermelho |
+| Pausado | fica de pé ao lado da mesa com ícone ⏸ |
+
+Regras de fidelidade: os personagens só se movem quando o estado vindo do orquestrador muda; os monitores só mostram
+atividade quando o agente está de fato no posto; a parede de protótipos só anima enquanto a designer está digitando.
+Os quadros dos andares (tarefas em andamento, erros encontrados, projetos, aprovações) são calculados a partir dos dados reais.
+O 1º andar (Operações) e as mesas marcadas “vaga” ficam prontos para expansão — configurados em `apps/web/game/building/layout.ts`.
+
+Segurança da web: o navegador nunca recebe o token. A aplicação Next.js repassa as chamadas ao orquestrador
+pelo servidor (`/api/acc/*`, apenas rotas conhecidas; ações exigem mesma origem) e transmite os eventos em
+tempo real por Server-Sent Events (`/api/stream`).
+
+## API do orquestrador
+
+Também é possível controlar tudo direto pela API (útil para automações):
 
 ```bash
 TOKEN=o-valor-do-seu-ACC_TOKEN
@@ -79,5 +118,6 @@ configurada em `ACC_ALLOWED_ORIGIN`.
 ```
 packages/shared         tipos de domínio, eventos e esquemas de validação (zod)
 apps/orchestrator       servidor HTTP + WebSocket, motor, planejador, executores, políticas, SQLite
-apps/web                (Etapa 2) Next.js + Tailwind + Phaser
+apps/web                Next.js + Tailwind + Phaser: prédio, painéis, proxy e stream de eventos
+e2e/                    teste ponta a ponta no navegador e capturas de tela
 ```

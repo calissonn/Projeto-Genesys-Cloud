@@ -3,16 +3,25 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": ["packages/*", "apps/*"],
-  "engines": { "node": ">=22.13" },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
-    "dev": "npm run dev -w @acc/orchestrator",
+    "dev": "concurrently -k -n orq,web -c cyan,magenta \"npm run dev -w @acc/orchestrator\" \"npm run dev -w @acc/web\"",
     "dev:orchestrator": "npm run dev -w @acc/orchestrator",
+    "dev:web": "npm run dev -w @acc/web",
+    "build": "npm run build -w @acc/web",
     "test": "npm test --workspaces --if-present",
+    "test:e2e": "node e2e/run.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "concurrently": "^10.0.6",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "vitest": "^5.1.0"
