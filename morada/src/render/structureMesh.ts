@@ -58,6 +58,7 @@ export function buildOpeningGroup(o: Opening, wallThickness: number): THREE.Grou
       // Detalhe de almofadas.
       leaf.add(box(iw * 0.7, ih * 0.35, 0.05, plain(o.color, 0.4), iw / 2, ih * 0.72, 0));
       leaf.add(box(iw * 0.7, ih * 0.35, 0.05, plain(o.color, 0.4), iw / 2, ih * 0.28, 0));
+      leaf.userData.leaf = true;
       leaf.position.set(o.flip ? iw / 2 : -iw / 2, y0, 0);
       if (o.flip) leaf.scale.x = -1;
       g.add(leaf);

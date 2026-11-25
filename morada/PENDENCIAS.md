@@ -15,21 +15,22 @@ Itens solicitados que ainda **não** estão implementados. Nenhum deles aparece 
 - [ ] Colisão entre móveis. Hoje só há colisão de móveis com paredes.
 - [ ] Iluminação com sombras projetadas pelas luminárias (as luzes pontuais existem, mas sem sombra, para preservar o desempenho).
 - [ ] Carregamento de modelos 3D externos (glTF) para móveis de alta fidelidade. Hoje todos os modelos são procedurais.
-- [ ] Câmera em primeira pessoa. Ela depende do personagem controlável (Etapa 3).
 
-## Etapa 3 — simulação de vida
-- [ ] Criação de personagens (nome, rosto, corpo, pele, cabelo, olhos, roupas, idade, personalidade, aspirações).
-- [ ] Famílias e relacionamentos.
-- [ ] Necessidades (fome, energia, higiene, diversão, social, conforto, bexiga) e autonomia.
-- [ ] Navegação (pathfinding com portas, escadas e elevador) e interação com os objetos. As funções de cada objeto já estão catalogadas em `CatalogDef.affords`.
-- [ ] Modo Vida com controle de velocidade do tempo.
-- [ ] Animais de estimação, festas, visitas, namoro, casamento e filhos.
+## Etapa 3 — simulação de vida (implementada; melhorias pendentes)
+- [ ] Animais de estimação com raças e carinho autônomo dos pets em relação à família.
+- [ ] Desvio entre personagens (hoje eles podem se atravessar nos corredores).
+- [ ] Malhas com pele e esqueleto (skinning) e expressões faciais detalhadas. Hoje o rosto tem boca que reage ao humor e o corpo é articulado por partes.
+- [ ] Morte e herança na velhice. Hoje a fase de idoso não termina.
+- [ ] Gravidez com etapas visíveis e gêmeos.
+- [ ] Mais interações em grupo (refeições em família, conversas a três).
+- [ ] Interface de "arrastar a ação para reordenar" a fila.
+- [ ] Faltar ao trabalho ou sair mais cedo.
 
 ## Etapa 4 — cidade e economia
 - [ ] Mapa da cidade com bairros, condomínios, parques, comércio, escolas, hospitais e locais de trabalho.
 - [ ] Compra e venda de imóveis existentes e troca de terreno. Hoje o terreno é escolhido ao criar o jogo.
-- [ ] Profissões, salários, contas de água e energia, despesas domésticas e evolução patrimonial.
-- [ ] Clima (chuva) e passagem automática do tempo. A hora do dia e a iluminação dinâmica já existem, com ajuste manual.
+- [ ] Locais de trabalho visitáveis, contas de água e energia, despesas domésticas recorrentes e gráfico de evolução patrimonial. Já existem profissões, salários, freelance, compras (refeições, ração, festa, adoção) e o patrimônio exibido no painel.
+- [ ] Clima (chuva, nuvens, estações). O ciclo dia/noite acompanha o relógio do modo Vida.
 
 ## Técnico
 - [ ] Mesclagem de geometrias por andar (instancing) para casas muito grandes em aparelhos simples.

@@ -123,7 +123,8 @@ export class Engine {
     const night = new THREE.Color('#0d1628');
     this.skyColor.copy(night).lerp(dusk, Math.min(1, dayness * 2)).lerp(day, Math.max(0, dayness * 2 - 1) * (1 - warm * 0.6));
     this.scene.background = this.skyColor;
-    this.scene.fog = new THREE.Fog(this.skyColor, 120, 320);
+    if (!this.scene.fog) this.scene.fog = new THREE.Fog(this.skyColor, 120, 320);
+    else (this.scene.fog as THREE.Fog).color.copy(this.skyColor);
     this.scene.environmentIntensity = 0.12 + 0.35 * dayness;
     this.renderer.toneMappingExposure = 0.85 + 0.25 * dayness;
     this.fitShadow();

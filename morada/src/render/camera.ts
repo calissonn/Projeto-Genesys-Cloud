@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type ViewMode = '3d' | 'planta';
+export type ViewMode = '3d' | 'planta' | 'pessoa';
 
 /** Câmera orbital (3D) e ortográfica (planta baixa 2D), controlada por gestos. */
 export class CameraRig {
@@ -15,13 +15,15 @@ export class CameraRig {
   bounds = { w: 30, d: 30 };
   onChange: (() => void) | null = null;
   private targetY = 0;
+  /** Pose da câmera em primeira pessoa (definida pelo modo Vida). */
+  fp = { pos: new THREE.Vector3(), yaw: 0, look: 0, pitch: -0.1 };
 
   constructor(private canvas: HTMLCanvasElement) {
     this.update();
   }
 
   get camera(): THREE.Camera {
-    return this.mode === '3d' ? this.persp : this.ortho;
+    return this.mode === 'planta' ? this.ortho : this.persp;
   }
 
   setMode(m: ViewMode) {
@@ -44,8 +46,9 @@ export class CameraRig {
   }
 
   pan(dx: number, dy: number) {
+    if (this.mode === 'pessoa') { this.rotate(-dx * 0.005, dy * 0.004); return; }
     const h = this.canvas.clientHeight || 1;
-    const worldPerPx = this.mode === '3d'
+    const worldPerPx = this.mode !== 'planta'
       ? (2 * this.distance * Math.tan(THREE.MathUtils.degToRad(this.persp.fov / 2))) / h
       : this.orthoZoom / Math.min(h, this.canvas.clientWidth || h);
     const yaw = this.mode === '3d' ? this.yaw : 0;
@@ -60,12 +63,19 @@ export class CameraRig {
   }
 
   zoom(factor: number) {
+    if (this.mode === 'pessoa') return;
     if (this.mode === '3d') this.distance = THREE.MathUtils.clamp(this.distance * factor, 3, 160);
     else this.orthoZoom = THREE.MathUtils.clamp(this.orthoZoom * factor, 4, 160);
     this.update();
   }
 
   rotate(dYaw: number, dPitch: number) {
+    if (this.mode === 'pessoa') {
+      this.fp.look += dYaw;
+      this.fp.pitch = THREE.MathUtils.clamp(this.fp.pitch - dPitch, -1.2, 1.0);
+      this.update();
+      return;
+    }
     if (this.mode !== '3d') return;
     this.yaw += dYaw;
     this.pitch = THREE.MathUtils.clamp(this.pitch + dPitch, 0.12, 1.45);
@@ -83,6 +93,16 @@ export class CameraRig {
       this.target.z + this.distance * Math.cos(this.pitch) * Math.cos(this.yaw),
     );
     this.persp.lookAt(this.target);
+    if (this.mode === 'pessoa') {
+      const yaw = this.fp.yaw + this.fp.look;
+      this.persp.position.copy(this.fp.pos);
+      this.persp.lookAt(
+        this.fp.pos.x + Math.sin(yaw) * Math.cos(this.fp.pitch),
+        this.fp.pos.y + Math.sin(this.fp.pitch),
+        this.fp.pos.z + Math.cos(yaw) * Math.cos(this.fp.pitch),
+      );
+    }
+    this.persp.near = this.mode === 'pessoa' ? 0.05 : 0.1;
     this.persp.updateProjectionMatrix();
 
     const half = this.orthoZoom / 2;

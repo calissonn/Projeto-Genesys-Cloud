@@ -2,6 +2,9 @@ import './styles.css';
 import { Engine, type GraphicsSettings } from './render/engine';
 import { Editor } from './editor/editor';
 import { Hud } from './ui/hud';
+import { LifeHud } from './ui/lifeHud';
+import { Simulation } from './sim/simulation';
+import { SelectTool } from './editor/tools';
 import { h, toastFactory } from './ui/dom';
 import { startScreen, gameMenu, settingsDialog, type AppApi } from './ui/menus';
 import { storage } from './core/storage';
@@ -44,7 +47,36 @@ try {
 const editor = new Editor(engine, initial);
 editor.snap.step = settings.gridStep;
 
+const sim = new Simulation(editor);
 let hud: Hud | null = null;
+let life: LifeHud | null = null;
+let mode: 'construir' | 'viver' = 'construir';
+
+const buildFrame = (dt: number) => { life?.view.sync(editor.view, null, dt, false); };
+
+function toLife() {
+  if (!hud || !life) return;
+  mode = 'viver';
+  hud.root.style.display = 'none';
+  editor.select(null);
+  editor.setTool(life.tool);
+  if (editor.rig.mode === 'planta') editor.rig.setMode('3d');
+  if (editor.view.wallMode === 'inteiras') editor.setView({ wallMode: 'baixas', showRoof: false });
+  sim.unstick();
+  life.show();
+  engine.onFrame = (dt) => life?.frame(dt);
+}
+
+function toBuild() {
+  if (!hud || !life) return;
+  mode = 'construir';
+  life.hide();
+  hud.root.style.display = '';
+  editor.setTool(new SelectTool(editor));
+  engine.onFrame = buildFrame;
+  editor.saveNow();
+}
+
 let startEl: HTMLElement | null = null;
 let deferredInstall: any = null;
 
@@ -58,17 +90,32 @@ const app: AppApi = {
     startEl?.remove();
     startEl = null;
     hud?.destroy();
+    life?.destroy();
+    sim.reset();
     hud = new Hud(root, editor, {
       openMenu: () => gameMenu(app),
       openSettings: () => settingsDialog(app),
+      toLife,
       toast,
     });
-    engine.onFrame = null;
+    life = new LifeHud(root, editor, sim, {
+      openMenu: () => gameMenu(app),
+      openSettings: () => settingsDialog(app),
+      toBuild,
+      toast,
+    });
+    mode = 'construir';
+    editor.setTool(new SelectTool(editor));
+    engine.onFrame = buildFrame;
     document.body.classList.add('playing');
   },
   showStart() {
     hud?.destroy();
     hud = null;
+    life?.destroy();
+    life = null;
+    mode = 'construir';
+    if (editor.rig.mode === 'pessoa') editor.rig.setMode('3d');
     document.body.classList.remove('playing');
     startEl?.remove();
     startEl = startScreen(app);
@@ -86,6 +133,7 @@ const app: AppApi = {
 };
 
 editor.on('toast', (m) => toast(m));
+sim.on('toast', (m) => toast(m));
 
 window.addEventListener('beforeinstallprompt', (ev) => {
   ev.preventDefault();
@@ -101,7 +149,7 @@ window.addEventListener('beforeinstallprompt', (ev) => {
 
 // Atalhos de teclado (quando houver teclado).
 window.addEventListener('keydown', (ev) => {
-  if (!hud || (ev.target as HTMLElement).tagName === 'INPUT') return;
+  if (!hud || mode !== 'construir' || (ev.target as HTMLElement).tagName === 'INPUT') return;
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); ev.shiftKey ? editor.redo() : editor.undo(); }
   else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'y') { ev.preventDefault(); editor.redo(); }
   else if (ev.key === 'Delete' || ev.key === 'Backspace') editor.deleteSelection();
@@ -115,4 +163,4 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 }
 
 // Exposto para testes automatizados.
-(window as any).__morada = { editor, app };
+(window as any).__morada = { editor, app, sim, get life() { return life; }, toLife, toBuild };

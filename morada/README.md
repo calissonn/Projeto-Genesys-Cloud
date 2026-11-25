@@ -1,6 +1,6 @@
 # Morada — construa, decore e viva
 
-Jogo mobile 3D de construção, decoração residencial e (nas próximas etapas) simulação de vida.
+Jogo mobile 3D de construção, decoração residencial e simulação de vida.
 Identidade visual, personagens, interface, ícones e modelos são originais e procedurais. Não há recursos de terceiros.
 
 - **Tecnologia:** Three.js + TypeScript + Vite, empacotado como **PWA** (instalável no Android e no iOS e funciona offline).
@@ -18,13 +18,46 @@ npm run dev        # servidor de desenvolvimento (acessível na rede local)
 npm run build      # gera dist/ (PWA pronto para hospedar em qualquer servidor estático)
 npm run preview    # serve o build em http://localhost:4173
 npm test           # testes unitários (Vitest)
-npm run test:e2e   # teste ponta a ponta no Chromium (requer Playwright e o preview rodando)
+npm run test:e2e   # testes ponta a ponta (construção e modo Vida) no Chromium; requer Playwright e o preview rodando
 ```
 
 Para instalar no celular, abra a URL do build no Chrome (Android) ou no Safari (iOS) e escolha
 **Instalar app** / **Adicionar à Tela de Início**. Depois do primeiro acesso, o app funciona offline.
 
-## O que já funciona (Etapa 1 + parte da Etapa 2)
+## Modos de jogo
+Use o seletor **🔨 Construir | 🏠 Viver** no canto superior esquerdo. Ao entrar no modo Viver pela primeira vez, o editor de personagens se abre para você criar a família.
+
+## Modo Vida (Etapa 3)
+
+### Criação de personagens e famílias
+- Até 8 membros, cada um com nome, sobrenome e idade: bebê, criança, adolescente, jovem adulto, adulto ou idoso.
+- **Rosto:** largura, mandíbula, tamanho e cor dos olhos, nariz, sobrancelhas e barba.
+- **Corpo:** altura, estrutura corporal e 8 tons de pele.
+- **Cabelo:** 9 penteados e 12 cores.
+- **Roupas:** 6 partes de cima, 4 de baixo, cores livres, calçados e 6 acessórios (óculos, óculos de sol, chapéu, boné, brincos e colar).
+- **Personalidade:** até 3 de 12 traços (alegre, ativo, preguiçoso, sociável, solitário, romântico, nerd, glutão, limpinho, criativo, família, ambicioso), que alteram a velocidade das necessidades, as preferências da autonomia e o ganho de habilidades.
+- **Profissão** (8 carreiras com 5 níveis cada) e **aspiração** (7 objetivos de vida, com progresso acompanhado no painel).
+- **Laços familiares:** cônjuges, noivos, namorados, pai ou mãe, filho, irmãos e colegas de casa.
+- Prévia 3D giratória com animação, botões de personagem e roupa aleatórios, e edição posterior pelo botão 👥.
+
+### Simulação
+- **7 necessidades:** fome, energia, higiene, diversão, social, conforto e bexiga. O humor é calculado pelas necessidades, pelos traços e pelos sentimentos temporários (promoção, festa, casamento, discussão etc.).
+- **Interações com objetos:** os móveis do catálogo têm funções reais (dormir, cochilar, sentar, lanchar, cozinhar e comer à mesa, café, churrasco, banho de chuveiro e de banheira, banheiro, lavar as mãos, TV sentado no sofá voltado para ela, freelance e jogos no computador, ler, lição de casa, desenhar, exercitar-se, nadar, lavar roupa, brincar, admirar, cuidar de plantas, dançar).
+- **Autonomia:** quem está sem ordens escolhe sozinho o que fazer, conforme as necessidades, a distância, a hora (à noite prefere dormir) e a personalidade. Pode ser desligada.
+- **Fila de ações:** toque em objetos, pessoas, pets ou no chão para dar ordens e toque em uma ação da fila para cancelá-la.
+- **Navegação:** busca de caminho (A*) em vários andares, contornando paredes e móveis. Os personagens passam por portas (que se abrem sozinhas), sobem e descem escadas retas, em L, em U, espirais e curvas, e usam o elevador.
+- **Social:** conversar, piada, elogio, abraço, discussão, flerte, beijo, pedido de namoro, pedido de casamento, casamento, tentar ter um bebê (exige cama de casal), cuidar do bebê, brincar com crianças, convidar para morar junto e despedir-se. Amizade e romance evoluem a cada interação, e o painel **Relações** mostra os vínculos.
+- **Bebês, crianças e envelhecimento:** a gravidez leva 1 dia e o bebê herda traços físicos dos pais. Bebês dormem no berço e precisam de cuidados. Todos fazem aniversário e mudam de fase (o envelhecimento pode ser desligado).
+- **Trabalho e escola:** os personagens saem no horário, voltam e recebem salário no Modo Simulação. O desempenho depende do humor e da habilidade da área e leva a promoções ou rebaixamentos. O freelance rende dinheiro em casa.
+- **Habilidades:** lógica, culinária, condicionamento, carisma e criatividade, de 0 a 10.
+- **Visitas e festas:** convide visitantes (personagens gerados pelo jogo, com autonomia) ou dê uma festa com 4 convidados e dança.
+- **Animais de estimação:** cães e gatos com fome, diversão e energia. Eles passeiam, seguem a família e dormem, e os personagens podem alimentá-los, brincar e fazer carinho.
+- **Situações críticas:** desmaio de sono, "acidente" com a bexiga (ninguém espera até o fim: a bexiga apertada interrompe o que estiver fazendo) e humor de fome.
+- **Tempo:** relógio com dias da semana, controles ⏸ ▶ ▶▶ ▶▶▶ e ciclo dia/noite real (o sol, o céu e as luminárias acompanham a hora).
+- **Câmeras:** livre, seguindo o personagem ou em **primeira pessoa** (arraste para olhar ao redor).
+- **Diário da família** com os acontecimentos. O estado do modo Vida é salvo junto com o jogo e **não** é afetado pelo desfazer do modo Construção.
+
+## Modo Construção (Etapas 1 e 2)
 
 ### Construção
 | Recurso | Como usar |
@@ -99,11 +132,15 @@ src/
   render/    engine (renderizador, sol, céu, terreno), câmera, texturas procedurais,
              malhas de paredes (curvas + vãos), pisos/aberturas/escadas/telhados, móveis procedurais, world (sincroniza cena)
   editor/    editor (estado, commits com validação de saldo, seleção, cômodos), entrada por toque, ferramentas
-  ui/        HUD, menus, catálogo com miniaturas 3D, ícones SVG
+  sim/       navegação A* multinível, interações (objetos, sociais, pets) e motor da simulação
+  ui/        HUD de construção e de vida, criação de personagens (CAS), menus, catálogo e retratos 3D, ícones SVG
 ```
 - O estado do jogo é um objeto `Project` serializável. Todas as alterações passam por `editor.commit()`, que guarda um snapshot para o
   desfazer, valida o saldo e reconstrói a cena. Durante os arrastos, `beginLive()` e `endLive()` agrupam a alteração em um único passo.
 - As paredes são poligonais extrudadas, com normais suaves e vãos recortados por intervalos ao longo do comprimento, o que funciona para retas e curvas.
-- Os novos módulos (personagens, cidade) se conectam ao `Editor` e ao `World` sem alterar o modelo de construção.
+- O modo Vida guarda seu estado em `project.life` (família, relações, relógio, saldo da vida). O desfazer da construção usa snapshots sem esse campo, para que reformas não "voltem no tempo".
+- Personagens são humanoides procedurais articulados (quadril, coluna, cabeça, ombros, cotovelos, quadris e joelhos), com mais de 20 animações procedurais (andar, sentar, dormir, comer, cozinhar, banho, exercício, natação, conversar, abraçar, beijar, dançar…).
+- A grade de navegação é refeita automaticamente quando a casa muda. Se uma reforma prender alguém, a pessoa é reposicionada no ponto livre mais próximo ao voltar para o modo Vida.
+- O próximo módulo (cidade) se conecta ao `Simulation` e ao `World` sem alterar os modelos existentes.
 
 Pendências e próximas etapas: veja [PENDENCIAS.md](./PENDENCIAS.md).

@@ -17,6 +17,7 @@ import { thumbs } from './thumbs';
 
 export interface HudCallbacks {
   openMenu(): void;
+  toLife(): void;
   openSettings(): void;
   toast(msg: string): void;
 }
@@ -91,7 +92,9 @@ export class Hud {
     });
 
     const top = h('div', { class: 'topbar' },
-      h('div', { class: 'group' }, iconBtn(ICONS.menu, 'Menu', () => cb.openMenu()), this.title, this.money),
+      h('div', { class: 'group' }, iconBtn(ICONS.menu, 'Menu', () => cb.openMenu()),
+        h('div', { class: 'mode-switch' }, h('button', { class: 'on' }, '🔨 Construir'), h('button', { onclick: () => cb.toLife() }, '🏠 Viver')),
+        this.title, this.money),
       h('div', { class: 'group level' },
         iconBtn(ICONS.down, 'Descer andar', () => e.setLevel(e.view.level - 1)),
         this.levelLabel,

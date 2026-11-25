@@ -1,7 +1,7 @@
 {
   "name": "morada",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Morada — simulador de vida, construção e decoração residencial (PWA 3D mobile)",
   "scripts": {
@@ -10,7 +10,7 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "node tests/e2e-smoke.cjs"
+    "test:e2e": "node tests/e2e-smoke.cjs && node tests/e2e-vida.cjs"
   },
   "dependencies": {
     "three": "^0.170.0"

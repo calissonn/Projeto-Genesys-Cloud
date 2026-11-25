@@ -85,7 +85,7 @@ export class Editor extends Emitter<EditorEvents> {
       rotate: (a, b) => this.rig.rotate(a, b),
     });
     this.rebuild();
-    document.addEventListener('visibilitychange', () => { if (document.hidden) this.saveNow(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.autosave) this.saveNow(); });
   }
 
   /* ------------------------------------------------------------ Coordenadas */
@@ -147,8 +147,16 @@ export class Editor extends Emitter<EditorEvents> {
 
   /* ------------------------------------------------------------ Alterações */
 
+  /** Snapshot da construção (sem o estado do modo Vida, que não participa do desfazer). */
   snapshot(): string {
-    return serializeProject(this.project);
+    return serializeProject({ ...this.project, life: undefined });
+  }
+
+  /** Restaura um snapshot preservando o estado do modo Vida. */
+  private restore(s: string) {
+    const life = this.project.life;
+    this.project = deserializeProject(s);
+    this.project.life = life;
   }
 
   /** Executa uma alteração atômica com desfazer e validação de saldo. */
@@ -157,7 +165,7 @@ export class Editor extends Emitter<EditorEvents> {
     try {
       fn(this.project);
     } catch (e) {
-      this.project = deserializeProject(before);
+      this.restore(before);
       this.rebuild();
       const msg = (e as Error).message;
       this.emit('toast', msg === 'fora' ? 'A alteração ultrapassa os limites do terreno.' : `Não foi possível aplicar: ${msg}`);
@@ -181,7 +189,7 @@ export class Editor extends Emitter<EditorEvents> {
 
   cancelLive() {
     if (!this.liveSnapshot) return;
-    this.project = deserializeProject(this.liveSnapshot);
+    this.restore(this.liveSnapshot);
     this.liveSnapshot = null;
     this.rebuild();
   }
@@ -189,7 +197,7 @@ export class Editor extends Emitter<EditorEvents> {
   private finish(before: string, _label: string): boolean {
     if (this.project.mode === 'simulacao' && balance(this.project) < 0) {
       const cost = computeCost(this.project).total;
-      this.project = deserializeProject(before);
+      this.restore(before);
       this.rebuild();
       this.emit('toast', `Saldo insuficiente: faltam ${fmtMoney(cost - this.project.funds)}`);
       return false;
@@ -205,14 +213,14 @@ export class Editor extends Emitter<EditorEvents> {
   undo() {
     const s = this.history.undo(this.snapshot());
     if (!s) return;
-    this.project = deserializeProject(s);
+    this.restore(s);
     this.afterRestore();
   }
 
   redo() {
     const s = this.history.redo(this.snapshot());
     if (!s) return;
-    this.project = deserializeProject(s);
+    this.restore(s);
     this.afterRestore();
   }
 
@@ -226,6 +234,7 @@ export class Editor extends Emitter<EditorEvents> {
 
   loadProject(p: Project) {
     this.project = p;
+    this.autosave = true;
     this.history.clear();
     this.select(null);
     this.view.level = 0;
@@ -244,7 +253,11 @@ export class Editor extends Emitter<EditorEvents> {
     p.levels = Math.max(p.levels, maxL + 1, this.view.level + 1);
   }
 
+  /** Salvamento automático só depois que um jogo começa (não salva o cenário do menu). */
+  autosave = false;
+
   scheduleSave() {
+    if (!this.autosave) return;
     clearTimeout(this.saveTimer);
     this.saveTimer = window.setTimeout(() => this.saveNow(), 1200);
   }

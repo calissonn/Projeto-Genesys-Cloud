@@ -109,6 +109,8 @@ export interface LotInfo {
   neighborhood: string;
 }
 
+import type { LifeState } from './life';
+
 export interface Project {
   version: number;
   id: string;
@@ -125,6 +127,8 @@ export interface Project {
   stairs: Stair[];
   roofs: Roof[];
   items: Item[];
+  /** Estado do modo Vida (família, relógio, relações). Fica fora do desfazer da construção. */
+  life?: LifeState;
   createdAt: number;
   updatedAt: number;
 }

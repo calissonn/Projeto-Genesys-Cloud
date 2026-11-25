@@ -2,6 +2,7 @@ import type { GameMode, LotInfo, OpeningKind, Project, Wall, Opening, Floor, Sta
 import { wallLength, polygonArea, wallPath, pointAt } from './geometry';
 import { MATERIAL_BY_ID } from './materials';
 import { CATALOG_BY_ID } from './catalog';
+import { newLife, fullNeeds, blankSkills, type LifeState } from './life';
 
 export const PROJECT_VERSION = 1;
 export const MAX_LEVELS = 5;
@@ -133,7 +134,7 @@ export function computeCost(p: Project): CostBreakdown {
 }
 
 export function balance(p: Project): number {
-  return p.mode === 'criativo' ? Infinity : p.funds - computeCost(p).total;
+  return p.mode === 'criativo' ? Infinity : p.funds + (p.life?.cash ?? 0) - computeCost(p).total;
 }
 
 export function fmtMoney(v: number): string {
@@ -193,6 +194,7 @@ export function sanitizeProject(raw: any): Project {
     stairs: raw.stairs ?? [],
     roofs: raw.roofs ?? [],
     items: raw.items ?? [],
+    life: raw.life ? sanitizeLife(raw.life) : undefined,
     createdAt: Number(raw.createdAt ?? Date.now()),
     updatedAt: Number(raw.updatedAt ?? Date.now()),
   };
@@ -200,6 +202,17 @@ export function sanitizeProject(raw: any): Project {
   p.openings = p.openings.filter((o) => wallIds.has(o.wallId));
   p.items = p.items.filter((i) => CATALOG_BY_ID.has(i.catalogId));
   return p;
+}
+
+function sanitizeLife(l: any): LifeState {
+  const base = newLife(String(l.householdName ?? 'Família'));
+  const out: LifeState = { ...base, ...l };
+  out.sims = (l.sims ?? []).map((s: any) => ({ ...s, needs: { ...fullNeeds(), ...(s.needs ?? {}) }, skills: { ...blankSkills(), ...(s.skills ?? {}) }, moodlets: s.moodlets ?? [], away: null }));
+  out.pets = l.pets ?? [];
+  out.relationships = l.relationships ?? [];
+  out.log = (l.log ?? []).slice(-60);
+  out.clock = { minutes: Number(l.clock?.minutes ?? 8 * 60) };
+  return out;
 }
 
 /** JSON-safe (Infinity não é serializável). */

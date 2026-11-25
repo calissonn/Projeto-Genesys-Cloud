@@ -34,6 +34,32 @@ class Thumbnails {
     this.pump();
   }
 
+  /** Retrato do rosto de um personagem (ou outro objeto) com enquadramento fixo. */
+  portrait(key: string, make: () => { obj: THREE.Object3D; center: THREE.Vector3; radius: number; dispose: () => void }): string {
+    const c = this.cache.get(key);
+    if (c) return c;
+    try {
+      this.init();
+      const { obj, center, radius, dispose } = make();
+      this.scene.add(obj);
+      obj.updateMatrixWorld(true);
+      const dist = radius / Math.tan(THREE.MathUtils.degToRad(15));
+      this.cam.position.copy(center).add(new THREE.Vector3(0.25, 0.1, 1).normalize().multiplyScalar(dist));
+      this.cam.lookAt(center);
+      this.cam.near = dist / 20;
+      this.cam.far = dist * 4;
+      this.cam.updateProjectionMatrix();
+      this.renderer!.render(this.scene, this.cam);
+      const url = this.renderer!.domElement.toDataURL('image/png');
+      this.scene.remove(obj);
+      dispose();
+      this.cache.set(key, url);
+      return url;
+    } catch {
+      return '';
+    }
+  }
+
   clearQueue() {
     this.queue.length = 0;
   }

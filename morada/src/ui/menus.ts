@@ -33,7 +33,7 @@ export function startScreen(app: AppApi): HTMLElement {
         h('button', { class: 'big', onclick: () => settingsDialog(app) }, '⚙ Configurações'),
         app.installPrompt ? h('button', { class: 'big', onclick: () => app.installPrompt?.() }, '⬇ Instalar aplicativo') : null,
       ),
-      h('p', { class: 'muted small' }, 'Versão 0.1 · Etapa 1 — Modo construção e decoração. Funciona offline após o primeiro acesso.'),
+      h('p', { class: 'muted small' }, 'Versão 0.2 · Construção, decoração e simulação de vida. Funciona offline após o primeiro acesso.'),
     ),
   );
   return el;

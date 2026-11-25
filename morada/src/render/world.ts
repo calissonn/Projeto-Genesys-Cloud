@@ -159,6 +159,15 @@ export class World {
     obj.rotation.y = it.rot;
   }
 
+  private gridHidden = false;
+
+  /** Oculta a grade temporariamente (modo Vida). */
+  setGridVisible(v: boolean) {
+    this.gridHidden = !v;
+    if (this.grid) this.grid.visible = v;
+    this.engine.invalidate();
+  }
+
   updateGrid(p: Project, view: ViewState) {
     if (this.grid) {
       this.engine.helpers.remove(this.grid);
@@ -175,6 +184,7 @@ export class World {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
     this.grid = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.22, depthWrite: false }));
     this.grid.renderOrder = 2;
+    this.grid.visible = !this.gridHidden;
     this.engine.helpers.add(this.grid);
   }
 
