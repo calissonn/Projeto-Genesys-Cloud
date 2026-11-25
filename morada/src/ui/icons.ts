@@ -1,0 +1,35 @@
+/** Ícones SVG próprios (traço 1.8, 24×24). */
+const svg = (body: string) =>
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+
+export const ICONS: Record<string, string> = {
+  menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  select: svg('<path d="M6 3l12 9-5.5 1.2L15 20l-2.6 1.1-2.6-6.6L6 18z"/>'),
+  wall: svg('<path d="M3 20V8l9-4 9 4v12"/><path d="M3 12h18M3 16h18M8 8v4M16 8v4M12 12v4M8 16v4M16 16v4"/>'),
+  floor: svg('<path d="M2 16l10-5 10 5-10 5z"/><path d="M7 13.5l10 5M17 13.5l-10 5"/>'),
+  door: svg('<path d="M5 21V4a1 1 0 011-1h9v18"/><path d="M15 3l4 2v16h-4M12 12h.01M3 21h18"/>'),
+  stair: svg('<path d="M3 20h5v-4h4v-4h4V8h5"/><path d="M3 20V8"/>'),
+  roof: svg('<path d="M2 12L12 4l10 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>'),
+  sofa: svg('<path d="M4 11V8a2 2 0 012-2h12a2 2 0 012 2v3"/><path d="M2 13a2 2 0 014 0v2h12v-2a2 2 0 014 0v5H2z"/><path d="M5 18v2M19 18v2"/>'),
+  paint: svg('<path d="M4 4h13v5H4z"/><path d="M17 6.5h3v5h-8v3"/><path d="M11 14.5h2V21h-2z"/>'),
+  demolish: svg('<path d="M14 4l6 6-3 3-6-6z"/><path d="M11 7L3 15l2 2 2 2 8-8"/><path d="M15 20h6"/>'),
+  undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>'),
+  redo: svg('<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/>'),
+  up: svg('<path d="M6 15l6-6 6 6"/>'),
+  down: svg('<path d="M6 9l6 6 6-6"/>'),
+  layers: svg('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>'),
+  eye: svg('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  cube: svg('<path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12M21 7l-9 5-9-5"/>'),
+  plan: svg('<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h7M14 12h7M12 3v6M12 14v7"/>'),
+  settings: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'),
+  close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+  trash: svg('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
+  copy: svg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/>'),
+  rotate: svg('<path d="M20 12a8 8 0 11-2.3-5.7"/><path d="M20 4v5h-5"/>'),
+  move: svg('<path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/>'),
+  roofOff: svg('<path d="M2 12L12 4l10 8"/><path d="M3 3l18 18"/>'),
+  grid: svg('<path d="M3 3h18v18H3zM9 3v18M15 3v18M3 9h18M3 15h18"/>'),
+  magnet: svg('<path d="M6 3v8a6 6 0 0012 0V3"/><path d="M6 7h4M14 7h4"/>'),
+  money: svg('<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>'),
+  save: svg('<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/>'),
+};
