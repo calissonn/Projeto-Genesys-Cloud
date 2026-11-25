@@ -149,14 +149,15 @@ export class Editor extends Emitter<EditorEvents> {
 
   /** Snapshot da construção (sem o estado do modo Vida, que não participa do desfazer). */
   snapshot(): string {
-    return serializeProject({ ...this.project, life: undefined });
+    return serializeProject({ ...this.project, life: undefined, city: undefined });
   }
 
   /** Restaura um snapshot preservando o estado do modo Vida. */
   private restore(s: string) {
-    const life = this.project.life;
+    const { life, city } = this.project;
     this.project = deserializeProject(s);
     this.project.life = life;
+    this.project.city = city;
   }
 
   /** Executa uma alteração atômica com desfazer e validação de saldo. */
@@ -243,6 +244,20 @@ export class Editor extends Emitter<EditorEvents> {
     this.rig.frame(p.lot.w, p.lot.d);
     this.rebuild();
     this.saveNow();
+  }
+
+  /** Troca o conteúdo construído exibido (mudança de terreno na cidade). */
+  swapStructure(lot: Project['lot'], s: { levels: number; walls: Project['walls']; openings: Project['openings']; floors: Project['floors']; stairs: Project['stairs']; roofs: Project['roofs']; items: Project['items'] }) {
+    Object.assign(this.project, { lot, levels: Math.max(1, s.levels), walls: s.walls, openings: s.openings, floors: s.floors, stairs: s.stairs, roofs: s.roofs, items: s.items });
+    this.history.clear();
+    this.selection = null;
+    this.view.level = 0;
+    this.engine.buildTerrain(lot);
+    this.rig.setLevelY(0);
+    this.rig.frame(lot.w, lot.d);
+    this.rebuild();
+    this.emit('selection', null);
+    this.scheduleSave();
   }
 
   private recountLevels() {

@@ -110,6 +110,7 @@ export interface LotInfo {
 }
 
 import type { LifeState } from './life';
+import type { CityState } from './city';
 
 export interface Project {
   version: number;
@@ -129,6 +130,8 @@ export interface Project {
   items: Item[];
   /** Estado do modo Vida (família, relógio, relações). Fica fora do desfazer da construção. */
   life?: LifeState;
+  /** Cidade (Etapa 4): bairros, lotes, imóveis do jogador e lote atual. */
+  city?: CityState;
   createdAt: number;
   updatedAt: number;
 }

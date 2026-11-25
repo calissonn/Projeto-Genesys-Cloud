@@ -26,11 +26,13 @@ Itens solicitados que ainda **não** estão implementados. Nenhum deles aparece 
 - [ ] Interface de "arrastar a ação para reordenar" a fila.
 - [ ] Faltar ao trabalho ou sair mais cedo.
 
-## Etapa 4 — cidade e economia
-- [ ] Mapa da cidade com bairros, condomínios, parques, comércio, escolas, hospitais e locais de trabalho.
-- [ ] Compra e venda de imóveis existentes e troca de terreno. Hoje o terreno é escolhido ao criar o jogo.
-- [ ] Locais de trabalho visitáveis, contas de água e energia, despesas domésticas recorrentes e gráfico de evolução patrimonial. Já existem profissões, salários, freelance, compras (refeições, ração, festa, adoção) e o patrimônio exibido no painel.
-- [ ] Clima (chuva, nuvens, estações). O ciclo dia/noite acompanha o relógio do modo Vida.
+## Etapa 4 — cidade e economia (implementada; melhorias pendentes)
+- [ ] Visualização 3D da cidade inteira (hoje o mapa é 2D e cada lugar é visitado como um terreno 3D).
+- [ ] Trabalho visitável durante o expediente (hoje o personagem "sai" para trabalhar e o local serve para horas extras).
+- [ ] Aluguel de imóveis para renda passiva e financiamento imobiliário.
+- [ ] NPCs que também compram, vendem e se mudam pela cidade.
+- [ ] Estações do ano, neve e temperatura afetando as necessidades.
+- [ ] Carro dirigível e trânsito animado nas ruas.
 
 ## Técnico
 - [ ] Mesclagem de geometrias por andar (instancing) para casas muito grandes em aparelhos simples.

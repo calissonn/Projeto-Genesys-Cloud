@@ -7,11 +7,11 @@ import { h, iconBtn, modal } from './dom';
 import { ICONS } from './icons';
 import {
   NEEDS, AGE_BY_ID, CAREER_BY_ID, SKILLS, ASPIRATIONS, TRAIT_BY_ID, WEEKDAYS, dayOf, fmtClock, hourOf, moodLabel, isAdult, canWalk,
-  type Sim,
+  type Sim, WEATHER, LEDGER_NAMES, type LedgerCat,
 } from '../model/life';
 import { interactionsForObject, SOCIALS, PET_ACTIONS } from '../sim/interactions';
 import { CATALOG_BY_ID } from '../model/catalog';
-import { balance, computeCost, fmtMoney, levelName } from '../model/project';
+import { balance, computeCost, fmtMoney, levelName, netWorth } from '../model/project';
 import { simPortrait, petPortrait } from './portraits';
 import { openCAS } from './cas';
 
@@ -19,6 +19,7 @@ export interface LifeCallbacks {
   openMenu(): void;
   openSettings(): void;
   toBuild(): void;
+  openMap(): void;
   toast(msg: string): void;
 }
 
@@ -39,6 +40,8 @@ export class LifeHud {
   private levelLabel: HTMLElement;
   private speedBtns: HTMLButtonElement[] = [];
   private camBtn: HTMLButtonElement;
+  private whereEl = h('div', { class: 'where' });
+  private lastWeather = '';
   private panelBtn!: HTMLButtonElement;
   private panelOpen = window.innerWidth >= 1000;
   private menu: HTMLElement | null = null;
@@ -69,8 +72,8 @@ export class LifeHud {
       h('div', { class: 'group' },
         iconBtn(ICONS.menu, 'Menu', () => cb.openMenu()),
         h('div', { class: 'mode-switch' },
-          h('button', { onclick: () => cb.toBuild() }, '🔨 Construir'),
-          h('button', { class: 'on' }, '🏠 Viver')),
+          h('button', { onclick: () => cb.toBuild(), title: 'Construir' }, '🔨', h('span', { class: 'lbl-txt' }, ' Construir')),
+          h('button', { class: 'on', title: 'Viver' }, '🏠', h('span', { class: 'lbl-txt' }, ' Viver'))),
         this.money),
       h('div', { class: 'group' }, this.clockEl, speedGroup),
       h('div', { class: 'group' },
@@ -84,6 +87,7 @@ export class LifeHud {
           cb.toast(`Paredes ${e.view.wallMode}`);
         }),
         iconBtn(ICONS.roof, 'Mostrar / ocultar telhados', () => { e.setView({ showRoof: !e.view.showRoof }); }),
+        iconBtn('<span style="font-size:19px">🗺</span>', 'Mapa da cidade', () => cb.openMap()),
         this.camBtn,
         this.panelBtn = iconBtn(ICONS.layers, 'Mostrar / ocultar painel de necessidades', () => this.togglePanel()),
         iconBtn(ICONS.settings, 'Configurações', () => cb.openSettings()),
@@ -93,7 +97,7 @@ export class LifeHud {
     this.card = h('div', { class: 'simcard' });
     this.side = h('div', { class: 'lifeside' });
     this.labels = h('div', { class: 'labels' });
-    this.root.append(this.labels, top, this.roster, this.card, this.side);
+    this.root.append(this.labels, top, this.whereEl, this.roster, this.card, this.side);
     this.applyPanel();
 
     this.tool = {
@@ -106,6 +110,9 @@ export class LifeHud {
       sim.on('roster', () => { this.renderRoster(); this.renderCard(); this.renderSide(); }),
       sim.on('update', () => this.renderCard()),
       e.on('view', () => this.syncTop()),
+      sim.on('weather', (k) => { this.e.engine.setWeather(k); this.lastWeather = k; }),
+      sim.on('flash', () => this.e.engine.flash()),
+      sim.on('travel', () => this.afterTravel()),
     );
   }
 
@@ -126,8 +133,18 @@ export class LifeHud {
     this.renderSide();
     this.syncTop();
     this.e.world.setGridVisible(false);
+    this.e.engine.setWeather(this.sim.world.weather);
     if (this.selected) this.focus(this.selected);
     if (!this.sim.household.length) this.openFamily();
+  }
+
+  /** Depois de viajar: seleciona alguém presente e enquadra a chegada. */
+  afterTravel() {
+    this.closeMenu();
+    if (!this.selected || !this.sim.agents.get(this.selected)?.visible) this.selected = this.sim.household.find((x) => canWalk(x.age) && !x.away)?.id ?? null;
+    this.renderRoster(); this.renderCard(); this.renderSide(); this.syncTop();
+    this.e.engine.setWeather(this.sim.world.weather);
+    if (this.selected) setTimeout(() => this.selected && this.focus(this.selected), 30);
   }
 
   private togglePanel() {
@@ -172,6 +189,7 @@ export class LifeHud {
       const night = this.e.engine.nightFactor > 0.35;
       if (night !== this.wasNight) { this.wasNight = night; this.e.rebuild(); }
     }
+    this.e.engine.updateWeather(dt, this.e.rig.target);
     this.followCamera();
     this.positionLabels();
     this.refreshAcc += dt;
@@ -223,7 +241,19 @@ export class LifeHud {
   private syncTop() {
     const p = this.e.project;
     const now = this.sim.now;
-    this.clockEl.textContent = `${WEEKDAYS[dayOf(now) % 7].slice(0, 3)} ${fmtClock(now)} · dia ${dayOf(now) + 1}`;
+    const wk = this.sim.world.weather;
+    this.clockEl.innerHTML = `${WEEKDAYS[dayOf(now) % 7].slice(0, 3)} ${fmtClock(now)}<span class="day"> · dia ${dayOf(now) + 1}</span> · ${WEATHER[wk].icon}<span class="temp"> ${this.sim.world.temperature()}°C</span>`;
+    this.clockEl.title = WEATHER[wk].name;
+    if (wk !== this.lastWeather) { this.lastWeather = wk; this.e.engine.setWeather(wk); }
+    const W = this.sim.world;
+    const key = `${W.city.currentLotId}|${W.city.homeLotId}`;
+    if (this.whereEl.dataset.key !== key) {
+      this.whereEl.dataset.key = key;
+      this.whereEl.innerHTML = '';
+      if (!W.atHome) {
+        this.whereEl.append(h('span', { class: 'pin' }, `📍 ${W.current.title}`), h('button', { class: 'chip', onclick: () => { if (W.travel(W.city.homeLotId)) this.cb.toast('De volta para casa!'); } }, '🏠 Voltar'));
+      }
+    }
     this.speedBtns.forEach((b, i) => b.classList.toggle('on', i === this.sim.speed));
     this.money.textContent = p.mode === 'criativo' ? '∞ Criativo' : fmtMoney(balance(p));
     this.levelLabel.textContent = levelName(this.e.view.level);
@@ -311,7 +341,7 @@ export class LifeHud {
         const list = interactionsForObject(it.catalogId).map((d) => ({
           icon: d.icon,
           label: d.name + (d.cost && this.e.project.mode === 'simulacao' ? ` (${fmtMoney(d.cost)})` : ''),
-          why: d.ages && !d.ages.includes(me.age) ? `Não disponível para ${AGE_BY_ID.get(me.age)!.name.toLowerCase()}` : null,
+          why: d.ages && !d.ages.includes(me.age) ? `Não disponível para ${AGE_BY_ID.get(me.age)!.name.toLowerCase()}` : this.sim.blocked(d, me),
           action: () => this.sim.enqueue(me.id, this.sim.objectTask(d, it.id)),
         }));
         if (list.length) { this.openMenu(x, y, def.name, list); return; }
@@ -398,7 +428,7 @@ export class LifeHud {
     const sd = this.side;
     sd.innerHTML = '';
     const a = this.selected ? this.sim.agents.get(this.selected) : null;
-    const tabs: [string, string][] = [['necessidades', 'Necessidades'], ['humor', 'Humor'], ['relacoes', 'Relações'], ['habilidades', 'Habilidades'], ['carreira', 'Carreira'], ['familia', 'Família']];
+    const tabs: [string, string][] = [['necessidades', 'Necessidades'], ['humor', 'Humor'], ['relacoes', 'Relações'], ['habilidades', 'Habilidades'], ['carreira', 'Carreira'], ['financas', 'Finanças'], ['familia', 'Família']];
     sd.append(h('div', { class: 'seg tabs' }, ...tabs.map(([id, n]) => h('button', { class: this.tab === id ? 'on' : '', onclick: () => { this.tab = id; this.renderSide(); } }, n))));
     const body = h('div', { class: 'side-body' });
     const putbody = (...els: (Node | string | null | undefined)[]) => body.append(...(els.filter((x) => x != null) as (Node | string)[]));
@@ -459,12 +489,16 @@ export class LifeHud {
         );
         break;
       }
+      case 'financas':
+        this.finances(putbody);
+        break;
       case 'familia': {
         const life = this.sim.life;
         const p = this.e.project;
         putbody(
-          h('p', {}, h('b', {}, `Família ${life.householdName}`), h('br'), h('small', { class: 'muted' }, `${this.sim.household.length} membro(s) · ${life.pets.length} pet(s)`)),
-          p.mode === 'simulacao' ? h('p', { class: 'small' }, `Patrimônio: ${fmtMoney(balance(p) + computeCost(p).total + p.lot.price)}`) : null,
+          h('p', {}, h('b', {}, `Família ${life.householdName}`), h('br'), h('small', { class: 'muted' }, `${this.sim.household.length} membro(s) · ${life.pets.length} pet(s) · moram em ${this.sim.world.home.address}, ${this.sim.world.hoodName(this.sim.world.home)}`)),
+          p.mode === 'simulacao' ? h('p', { class: 'small' }, `Patrimônio: ${fmtMoney(netWorth(p))}`) : null,
+          h('button', { class: 'chip', onclick: () => this.cb.openMap() }, '🗺 Abrir o mapa da cidade'),
           h('div', { class: 'actions-grid' },
             h('button', { onclick: () => this.openFamily() }, '👥 Editar família'),
             h('button', { onclick: () => { this.sim.inviteVisitor(1, 4); this.cb.toast('Um visitante está chegando!'); } }, '🚪 Convidar visita'),
@@ -478,6 +512,92 @@ export class LifeHud {
         break;
       }
     }
+  }
+
+  /** Painel de finanças: saldo, contas, extrato, imóveis e evolução do patrimônio. */
+  private finances(put: (...els: (Node | string | null | undefined)[]) => void) {
+    const p = this.e.project;
+    const life = this.sim.life;
+    const W = this.sim.world;
+    if (p.mode === 'criativo') {
+      put(h('p', { class: 'muted' }, 'Modo Criativo: dinheiro ilimitado, sem contas a pagar.'), h('p', { class: 'small' }, `Despensa: ${life.groceries} refeições`));
+      return;
+    }
+    const pending = life.bills.filter((b) => !b.paid);
+    const now = this.sim.now;
+    put(
+      h('div', { class: 'fin-top' },
+        h('div', {}, h('small', {}, 'Saldo'), h('b', {}, fmtMoney(balance(p)))),
+        h('div', {}, h('small', {}, 'Patrimônio'), h('b', {}, fmtMoney(netWorth(p)))),
+        h('div', {}, h('small', {}, 'Despensa'), h('b', {}, `${life.groceries} 🍽`))),
+      h('h4', {}, 'Contas'),
+      pending.length ? null : h('p', { class: 'muted small' }, 'Nenhuma conta pendente. As contas chegam toda segunda-feira.'),
+      ...pending.map((b) => h('div', { class: `bill ${now > b.due ? 'late' : ''}` },
+        h('span', {}, b.name, h('small', {}, now > b.due ? ' · VENCIDA' : ` · vence em ${Math.max(0, Math.ceil((b.due - now) / 1440))} dia(s)`)),
+        h('b', {}, fmtMoney(b.amount)),
+        h('button', { class: 'chip primary', onclick: () => { W.pay(b.id); this.renderSide(); } }, 'Pagar'))),
+      pending.length > 1 ? h('button', { class: 'chip', onclick: () => { W.payAll(); this.renderSide(); } }, 'Pagar todas') : null,
+      h('label', { class: 'check small' }, h('input', { type: 'checkbox', checked: !!life.autopay, onchange: (ev: Event) => { life.autopay = (ev.target as HTMLInputElement).checked; if (life.autopay) W.payAll(true); this.renderSide(); } }), ' Débito automático'),
+      W.isCut('energia') ? h('p', { class: 'warn' }, '⚡ Energia cortada: TV, computador e eletrodomésticos não funcionam.') : null,
+      W.isCut('agua') ? h('p', { class: 'warn' }, '🚱 Água cortada: banhos e pias indisponíveis.') : null,
+      h('h4', {}, 'Últimos 7 dias'),
+      this.ledgerTable(),
+      h('h4', {}, 'Evolução do patrimônio'),
+      this.chart(),
+      h('h4', {}, 'Imóveis'),
+      ...W.city.lots.filter((l) => l.owner === 'jogador').map((l) => h('div', { class: 'bill' },
+        h('span', {}, `${l.id === W.city.homeLotId ? '⭐' : '🔑'} ${l.address}`, h('small', {}, ` · ${W.hoodName(l)}`)),
+        h('b', {}, fmtMoney(W.saleValue(l) / 0.9)))),
+    );
+  }
+
+  private ledgerTable(): HTMLElement {
+    const since = this.sim.now - 7 * 1440;
+    const by = new Map<string, number>();
+    let inc = 0, out = 0;
+    for (const e of this.sim.life.ledger) {
+      if (e.t < since) continue;
+      by.set(e.cat, (by.get(e.cat) ?? 0) + e.amount);
+      if (e.amount > 0) inc += e.amount; else out -= e.amount;
+    }
+    const rows = [...by.entries()].sort((a, b) => a[1] - b[1]);
+    return h('div', { class: 'ledger' },
+      ...rows.map(([cat, v]) => h('div', { class: 'lrow' }, h('span', {}, LEDGER_NAMES[cat as LedgerCat]), h('b', { style: { color: v >= 0 ? '#4fd18b' : '#ff8a8a' } }, `${v >= 0 ? '+' : ''}${fmtMoney(Math.round(v))}`))),
+      h('div', { class: 'lrow total' }, h('span', {}, 'Receitas / despesas'), h('b', {}, `+${fmtMoney(Math.round(inc))} / −${fmtMoney(Math.round(out))}`)),
+    );
+  }
+
+  private chart(): Element {
+    const hist = this.sim.life.history;
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 300 90');
+    svg.setAttribute('class', 'chart');
+    if (hist.length < 2) {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', '8'); t.setAttribute('y', '48'); t.setAttribute('fill', '#9aa5b1'); t.setAttribute('font-size', '11');
+      t.textContent = 'O gráfico aparece após alguns dias de jogo.';
+      svg.append(t);
+      return svg;
+    }
+    const vals = hist.map((x) => x.patrimonio);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const span = Math.max(1, max - min);
+    const pts = hist.map((x, i) => `${8 + (i / (hist.length - 1)) * 284},${80 - ((x.patrimonio - min) / span) * 66}`).join(' ');
+    const line = document.createElementNS(NS, 'polyline');
+    line.setAttribute('points', pts);
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', '#f2b544');
+    line.setAttribute('stroke-width', '2.5');
+    line.setAttribute('stroke-linejoin', 'round');
+    svg.append(line);
+    for (const [y, v] of [[12, max], [82, min]] as const) {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', '296'); t.setAttribute('y', String(y)); t.setAttribute('fill', '#9aa5b1'); t.setAttribute('font-size', '9'); t.setAttribute('text-anchor', 'end');
+      t.textContent = fmtMoney(v);
+      svg.append(t);
+    }
+    return svg;
   }
 
   private aspiration(s: Sim) {

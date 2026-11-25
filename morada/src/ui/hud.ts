@@ -93,7 +93,7 @@ export class Hud {
 
     const top = h('div', { class: 'topbar' },
       h('div', { class: 'group' }, iconBtn(ICONS.menu, 'Menu', () => cb.openMenu()),
-        h('div', { class: 'mode-switch' }, h('button', { class: 'on' }, '🔨 Construir'), h('button', { onclick: () => cb.toLife() }, '🏠 Viver')),
+        h('div', { class: 'mode-switch' }, h('button', { class: 'on', title: 'Construir' }, '🔨', h('span', { class: 'lbl-txt' }, ' Construir')), h('button', { onclick: () => cb.toLife(), title: 'Viver' }, '🏠', h('span', { class: 'lbl-txt' }, ' Viver'))),
         this.title, this.money),
       h('div', { class: 'group level' },
         iconBtn(ICONS.down, 'Descer andar', () => e.setLevel(e.view.level - 1)),

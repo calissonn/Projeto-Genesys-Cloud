@@ -178,6 +178,8 @@ export interface Sim {
   rot: number;
   /** Visitante (não pertence à família). */
   visitor?: boolean;
+  /** Morador da cidade (persistente entre visitas). */
+  townie?: boolean;
   /** Minuto absoluto de partida do visitante. */
   leaveAt?: number;
   /** Minuto absoluto do nascimento de um bebê a caminho. */
@@ -219,6 +221,26 @@ export interface Clock {
   minutes: number;
 }
 
+export type LedgerCat = 'salario' | 'freela' | 'compras' | 'lazer' | 'contas' | 'imoveis' | 'pets' | 'transporte' | 'saude' | 'educacao' | 'outros';
+export const LEDGER_NAMES: Record<LedgerCat, string> = {
+  salario: 'Salários', freela: 'Freelance e horas extras', compras: 'Mercado e refeições', lazer: 'Lazer e festas', contas: 'Contas da casa',
+  imoveis: 'Imóveis', pets: 'Animais de estimação', transporte: 'Transporte', saude: 'Saúde', educacao: 'Educação', outros: 'Outros',
+};
+
+export interface Bill {
+  id: string;
+  kind: 'agua' | 'energia' | 'iptu' | 'internet';
+  name: string;
+  amount: number;
+  due: number;
+  paid: boolean;
+}
+
+export type WeatherKind = 'sol' | 'nublado' | 'chuva' | 'tempestade';
+export const WEATHER: Record<WeatherKind, { name: string; icon: string }> = {
+  sol: { name: 'Ensolarado', icon: '☀️' }, nublado: { name: 'Nublado', icon: '⛅' }, chuva: { name: 'Chuva', icon: '🌧' }, tempestade: { name: 'Tempestade', icon: '⛈' },
+};
+
 export interface LifeState {
   householdName: string;
   sims: Sim[];
@@ -231,12 +253,21 @@ export interface LifeState {
   aging: boolean;
   log: { t: number; text: string }[];
   partyUntil?: number;
+  /** Extrato: receitas (+) e despesas (−). */
+  ledger: { t: number; cat: LedgerCat; amount: number; label: string }[];
+  bills: Bill[];
+  autopay?: boolean;
+  /** Patrimônio diário para o gráfico de evolução. */
+  history: { day: number; saldo: number; patrimonio: number }[];
+  /** Refeições disponíveis na despensa (compradas no mercado). */
+  groceries: number;
+  weather: { kind: WeatherKind; until: number };
 }
 
 export function newLife(name: string): LifeState {
   return {
     householdName: name, sims: [], pets: [], relationships: [], clock: { minutes: 8 * 60 }, cash: 0,
-    autonomy: true, aging: true, log: [],
+    autonomy: true, aging: true, log: [], ledger: [], bills: [], history: [], groceries: 14, weather: { kind: 'sol', until: 0 },
   };
 }
 

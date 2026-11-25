@@ -15,6 +15,8 @@ import {
   type InteractionDef, type SocialDef, type SpotKind,
 } from './interactions';
 import type { Editor } from '../editor/editor';
+import { CityLife } from './cityLife';
+import type { LedgerCat, WeatherKind } from '../model/life';
 
 export type Speed = 0 | 1 | 2 | 3;
 const MIN_PER_SEC: Record<Speed, number> = { 0: 0, 1: 1.5, 2: 5, 3: 18 };
@@ -59,6 +61,8 @@ export interface Agent {
   thought: string | null;
   thoughtUntil: number;
   visible: boolean;
+  /** Funcionário parado no posto de trabalho (caixa, recepção, cozinha). */
+  staff?: { pos: P; rot: number; anim: Anim };
 }
 
 export interface PetAgent {
@@ -73,6 +77,9 @@ export interface SimEvents extends Record<string, unknown> {
   toast: string;
   update: null;
   roster: null;
+  weather: WeatherKind;
+  flash: null;
+  travel: string;
 }
 
 const tpl = (t: Partial<Task> & Pick<Task, 'kind' | 'label' | 'icon'>): Task => ({
@@ -90,12 +97,14 @@ export class Simulation extends Emitter<SimEvents> {
   private saveAcc = 0;
   private rng = Math.random;
   life: LifeState;
+  world: CityLife;
 
   constructor(public editor: Editor) {
     super();
     const p = editor.project;
     if (!p.life) p.life = newLife(p.name);
     this.life = p.life;
+    this.world = new CityLife(this);
     this.lastDay = dayOf(this.life.clock.minutes);
     for (const s of this.life.sims) this.addAgent(s);
     for (const pet of this.life.pets) this.addPet(pet);
@@ -111,6 +120,7 @@ export class Simulation extends Emitter<SimEvents> {
     const p = this.editor.project;
     if (!p.life) p.life = newLife(p.name);
     this.life = p.life;
+    this.world.ensure();
     this.agents.clear();
     this.pets.clear();
     this.reserved.clear();
@@ -118,6 +128,8 @@ export class Simulation extends Emitter<SimEvents> {
     this.lastDay = dayOf(this.life.clock.minutes);
     for (const s of this.life.sims) this.addAgent(s);
     for (const pet of this.life.pets) this.addPet(pet);
+    this.world.restoreStaff();
+    this.editor.world.powerOff = this.world.atHome && this.world.isCut('energia');
     this.emit('roster', null);
   }
 
@@ -173,15 +185,66 @@ export class Simulation extends Emitter<SimEvents> {
     return this.project.mode === 'criativo' || balance(this.project) >= v;
   }
 
-  spend(v: number, what: string): boolean {
+  spend(v: number, what: string, cat: LedgerCat = 'outros', label?: string): boolean {
     if (this.project.mode === 'criativo') return true;
     if (!this.canSpend(v)) { this.emit('toast', `Saldo insuficiente para ${what} (${fmtMoney(v)}).`); return false; }
     this.life.cash -= v;
+    this.record(cat, -v, label ?? what.replace(/^(a|o|as|os) /, ''));
     return true;
   }
 
-  earn(v: number) {
-    if (this.project.mode === 'simulacao') this.life.cash += v;
+  earn(v: number, cat: LedgerCat = 'salario', label = '') {
+    if (this.project.mode !== 'simulacao') return;
+    this.life.cash += v;
+    this.record(cat, v, label);
+  }
+
+  private record(cat: LedgerCat, amount: number, label: string) {
+    const L = this.life.ledger;
+    const last = L[L.length - 1];
+    // Agrupa pequenos lançamentos contínuos (ex.: freelance por minuto).
+    if (last && last.cat === cat && last.label === label && this.now - last.t < 60 && Math.abs(amount) < 50) { last.amount += amount; last.t = this.now; return; }
+    L.push({ t: this.now, cat, amount, label });
+    if (L.length > 300) L.shift();
+  }
+
+  /** Motivo pelo qual a interação não está disponível para este personagem (ou null). */
+  blocked(def: InteractionDef, s: Sim): string | null {
+    const u = this.world.utilityBlock(def.power, def.water);
+    if (u) return u;
+    if (def.careerAt) {
+      const careers = this.world.current.careers ?? [];
+      if (!careers.includes(s.career)) return 'Só para quem trabalha na área deste lugar';
+    }
+    return null;
+  }
+
+  addMoodlet(s: Sim, id: string, name: string, value: number, hours: number) {
+    this.moodlet(s, id, name, value, hours);
+  }
+
+  resetNav() { this.nav = null; this.reserved.clear(); }
+
+  /** Membro da família chega ao terreno pela calçada. */
+  arrive(s: Sim) {
+    const a = this.agents.get(s.id);
+    if (!a) return;
+    a.queue = [];
+    a.posture = 'stand';
+    a.engagedUntil = 0;
+    a.anim = 'idle';
+    if (s.age === 'bebe') { this.spawn(s, this.frontYard()); this.placeBaby(a, false); return; }
+    this.spawn(s, add(this.exitPoint(), { x: (this.rng() - 0.5) * 2, y: -1.2 }));
+  }
+
+  /** Retira alguém do terreno (sem apagar relacionamentos, a menos que pedido). */
+  despawn(id: string, forget: boolean) {
+    if (forget) { this.removeSim(id); return; }
+    const a = this.agents.get(id);
+    if (a) for (let i = a.queue.length - 1; i >= 0; i--) this.cancelTask(a, i);
+    this.agents.delete(id);
+    this.life.sims = this.life.sims.filter((x) => x.id !== id);
+    this.emit('roster', null);
   }
 
   log(text: string, toast = true) {
@@ -297,8 +360,9 @@ export class Simulation extends Emitter<SimEvents> {
     const now = this.now;
     const day = dayOf(now);
     if (day !== this.lastDay) { this.lastDay = day; this.newDay(); }
+    this.world.tick(dt);
     for (const a of [...this.agents.values()]) this.updateAgent(a, dt);
-    for (const pa of this.pets.values()) this.updatePet(pa, dt);
+    if (this.world.atHome) for (const pa of this.pets.values()) this.updatePet(pa, dt);
     if (life.partyUntil && now >= life.partyUntil) {
       life.partyUntil = undefined;
       this.log('A festa terminou! Todos se divertiram muito.');
@@ -308,6 +372,7 @@ export class Simulation extends Emitter<SimEvents> {
   }
 
   private newDay() {
+    this.world.newDay();
     if (!this.life.aging) return;
     for (const s of this.household) {
       s.ageDays += 1;
@@ -361,6 +426,13 @@ export class Simulation extends Emitter<SimEvents> {
 
   private updateAgent(a: Agent, dt: number) {
     const s = a.sim;
+    if (a.staff) {
+      s.pos = { ...a.staff.pos };
+      s.rot = a.staff.rot;
+      a.anim = this.now < a.engagedUntil ? 'talk' : a.staff.anim;
+      a.posture = 'stand';
+      return;
+    }
     this.decay(a, dt);
     s.moodlets = s.moodlets.filter((m) => m.until > this.now);
     if (a.thought && this.now > a.thoughtUntil) a.thought = null;
@@ -517,7 +589,7 @@ export class Simulation extends Emitter<SimEvents> {
       } else {
         const wage = c.wage[s.careerLevel] ?? 0;
         const pay = Math.round(wage * c.hours * (0.8 + Math.max(0, m) / 250));
-        this.earn(pay);
+        this.earn(pay, 'salario', `Salário de ${s.firstName}`);
         this.log(`${s.firstName} voltou do trabalho e recebeu ${fmtMoney(pay)}.`);
       }
       if (s.performance >= 100 && s.careerLevel < c.titles.length - 1) {
@@ -568,13 +640,13 @@ export class Simulation extends Emitter<SimEvents> {
     let spots = def.spot === 'seatNear' || def.spot === 'here' ? [] : spotsFor(it.catalogId, kind);
     if (def.spot === 'seatNear') {
       // Procura assento voltado para o objeto (TV) ou ao lado (mesa/computador).
-      const maxD = def.id === 'tv' ? 6 : 1.6;
+      const maxD = def.maxSeatDist ?? (def.faceObject ? 6 : 1.6);
       const seats = this.project.items
         .filter((s2) => s2.level === it.level && spotsFor(s2.catalogId, 'sit').length && s2.catalogId !== 'vaso')
         .map((s2) => ({ s2, d: dist(s2.pos, it.pos) }))
         .filter((x) => x.d < maxD)
         .filter((x) => {
-          if (def.id !== 'tv') return true;
+          if (!def.faceObject) return true;
           const fwd = { x: Math.sin(x.s2.rot), y: Math.cos(x.s2.rot) };
           const to = norm(sub(it.pos, x.s2.pos));
           return fwd.x * to.x + fwd.y * to.y > 0.5;
@@ -623,10 +695,17 @@ export class Simulation extends Emitter<SimEvents> {
   private plan(a: Agent, t: Task): boolean {
     const s = a.sim;
     switch (t.kind) {
-      case 'obj':
+      case 'obj': {
+        const why = t.def ? this.blocked(t.def, s) : null;
+        if (why) { this.fail(a, why); return false; }
         if (!this.chooseSpot(a, t)) return false;
-        if (t.def?.cost && !this.spend(t.def.cost, t.def.name.toLowerCase())) { this.cancelTask(a, 0); return false; }
+        const def = t.def!;
+        if (def.cost && !s.visitor) {
+          if (COOKING.has(def.id) && this.life.groceries > 0) this.life.groceries--;
+          else if (!this.spend(def.cost, def.name.toLowerCase(), costCat(def.id), def.name)) { this.cancelTask(a, 0); return false; }
+        }
         break;
+      }
       case 'social':
       case 'pet': {
         const tp = t.kind === 'social' ? this.agents.get(t.targetSim!)?.sim : this.pets.get(t.petId!)?.pet;
@@ -793,7 +872,7 @@ export class Simulation extends Emitter<SimEvents> {
           const mult = (def.skill.id === 'criatividade' && s.traits.includes('criativo')) || (def.skill.id === 'fitness' && s.traits.includes('ativo')) ? 1.5 : 1;
           s.skills[def.skill.id] = Math.min(10, s.skills[def.skill.id] + def.skill.perHour * h * mult);
         }
-        if (def.earn) this.earn(def.earn * h * (1 + s.skills.logica / 10));
+        if (def.earn && !s.visitor) this.earn(def.earn * h * (1 + s.skills.logica / 10), 'freela', 'Freelance');
         // Natação: nada de um lado ao outro da piscina.
         if (def.anim === 'swim' && t.spot) {
           const it = this.item(t.itemId);
@@ -849,7 +928,7 @@ export class Simulation extends Emitter<SimEvents> {
         pa.until = this.now + 2;
         if (t.elapsed >= t.minutes) {
           const act = t.petAct!;
-          if ('cost' in act && act.cost && !this.spend(act.cost, 'ração')) { this.cancelTask(a, 0); return; }
+          if ('cost' in act && act.cost && !this.spend(act.cost, 'ração', 'pets', 'Ração')) { this.cancelTask(a, 0); return; }
           for (const [k, v] of Object.entries(act.actor) as [Need, number][]) add(k, v);
           for (const [k, v] of Object.entries(act.pet)) (pa.pet.needs as any)[k] = Math.max(0, Math.min(100, (pa.pet.needs as any)[k] + v));
           a.queue.shift();
@@ -874,9 +953,53 @@ export class Simulation extends Emitter<SimEvents> {
     }
     if (a.posture !== 'stand' && !(a.queue[0]?.phase === 'act')) this.standUp(a, t);
     else a.posture = 'stand';
+    if (t.def?.effect && !s.visitor) this.applyEffect(a, t.def);
     if (t.def?.id === 'dormir') this.moodlet(s, 'descansado', 'Bem descansado', 8, 4);
     if (t.def?.id === 'banho' || t.def?.id === 'banheira') this.moodlet(s, 'limpo', 'Cheiroso', 5, 3);
     this.emit('update', null);
+  }
+
+  private applyEffect(a: Agent, def: InteractionDef) {
+    const s = a.sim;
+    switch (def.effect) {
+      case 'groceries':
+        this.life.groceries += 20;
+        this.log(`🛒 Despensa abastecida: ${this.life.groceries} refeições em casa.`);
+        break;
+      case 'outfit': {
+        const r = randomAppearance();
+        Object.assign(s.look, { top: r.top, topColor: r.topColor, bottom: r.bottom, bottomColor: r.bottomColor, shoeColor: r.shoeColor });
+        this.moodlet(s, 'roupa', 'Roupa nova!', 10, 24);
+        this.emit('roster', null);
+        break;
+      }
+      case 'checkup':
+        this.moodlet(s, 'saude', 'Saúde em dia', 8, 72);
+        s.needs.conforto = Math.min(100, s.needs.conforto + 20);
+        this.log(`🩺 ${s.firstName} fez um check-up: está tudo bem!`, false);
+        break;
+      case 'curso': {
+        const c = CAREER_BY_ID.get(s.career);
+        const sk = c?.skill ?? 'logica';
+        s.skills[sk] = Math.min(10, s.skills[sk] + 1);
+        this.log(`🎓 ${s.firstName} concluiu um curso e melhorou em ${sk === 'logica' ? 'lógica' : sk}.`);
+        break;
+      }
+      case 'reforco':
+        s.performance = Math.min(100, s.performance + 25);
+        this.log(`📚 ${s.firstName} foi à aula de reforço: notas melhores!`, false);
+        break;
+      case 'horaextra': {
+        const c = CAREER_BY_ID.get(s.career);
+        if (c && c.hours) {
+          const pay = Math.round((c.wage[s.careerLevel] ?? 0) * 2 * 1.5);
+          this.earn(pay, 'freela', `Hora extra de ${s.firstName}`);
+          s.performance += 8;
+          this.log(`⏱ ${s.firstName} fez hora extra e recebeu ${fmtMoney(pay)}.`);
+        }
+        break;
+      }
+    }
   }
 
   private finishSocial(a: Agent, ta: Agent, def: SocialDef) {
@@ -934,6 +1057,10 @@ export class Simulation extends Emitter<SimEvents> {
   private moveIn(b: Sim) {
     b.visitor = false;
     b.leaveAt = undefined;
+    b.townie = false;
+    this.world.adopt(b.id);
+    const ag = this.agents.get(b.id);
+    if (ag) ag.staff = undefined;
     if (b.career === 'nenhuma' && isAdult(b.age)) b.career = 'nenhuma';
     this.emit('roster', null);
   }
@@ -942,7 +1069,7 @@ export class Simulation extends Emitter<SimEvents> {
     const s = a.sim;
     a.queue.shift();
     if (t.leaveReason === 'visita') {
-      this.removeSim(s.id);
+      this.despawn(s.id, !s.townie);
       return;
     }
     s.away = t.leaveReason === 'escola' ? 'escola' : 'trabalho';
@@ -984,12 +1111,15 @@ export class Simulation extends Emitter<SimEvents> {
       if (def.earn && this.project.mode === 'simulacao') benefit += 8;
       if (def.skill) benefit += 2;
       for (const [tr, m] of Object.entries(def.traitBonus ?? {})) if (s.traits.includes(tr as any)) benefit *= m ?? 1;
-      if (def.cost && !this.canSpend(def.cost)) continue;
+      if (def.cost && !s.visitor && !this.canSpend(def.cost)) continue;
+      if (this.blocked(def, s)) continue;
       if (benefit < 1.5) continue;
+      const raining = this.world.weather === 'chuva' || this.world.weather === 'tempestade';
       for (const it of items) {
         if (!def.objects.includes(it.catalogId)) continue;
         const d = dist(it.pos, s.pos) + Math.abs(it.level - s.level) * 4;
-        opts.push({ score: benefit - d * 0.35, task: () => this.objectTask(def, it.id) });
+        const wet = raining && !this.world.isIndoors(it.level, it.pos) ? 0.15 : 1;
+        opts.push({ score: (benefit - d * 0.35) * wet, task: () => this.objectTask(def, it.id) });
       }
     }
     // Social
@@ -1077,8 +1207,10 @@ export class Simulation extends Emitter<SimEvents> {
 
   inviteVisitor(count = 1, hours = 4): Sim[] {
     const out: Sim[] = [];
+    if (!this.world.atHome) { this.emit('toast', 'Só é possível receber visitas em casa.'); return out; }
     for (let i = 0; i < count; i++) {
-      const v = randomSim({ age: this.rng() < 0.8 ? (this.rng() < 0.5 ? 'jovem' : 'adulto') : 'adolescente' });
+      const v = this.world.pickTownie() ?? randomSim({ age: this.rng() < 0.8 ? (this.rng() < 0.5 ? 'jovem' : 'adulto') : 'adolescente' });
+      v.away = null;
       v.visitor = true;
       v.leaveAt = this.now + hours * 60;
       this.life.sims.push(v);
@@ -1093,7 +1225,8 @@ export class Simulation extends Emitter<SimEvents> {
 
   throwParty(): boolean {
     if (this.life.partyUntil && this.now < this.life.partyUntil) { this.emit('toast', 'Já há uma festa acontecendo!'); return false; }
-    if (!this.spend(600, 'a festa')) return false;
+    if (!this.world.atHome) { this.emit('toast', 'Festas só podem ser dadas em casa.'); return false; }
+    if (!this.spend(600, 'a festa', 'lazer', 'Festa')) return false;
     this.inviteVisitor(4, 5);
     this.life.partyUntil = this.now + 5 * 60;
     for (const s of this.life.sims) this.moodlet(s, 'festa', 'Festa animada', 15, 5);
@@ -1103,7 +1236,8 @@ export class Simulation extends Emitter<SimEvents> {
 
   adoptPet(kind: 'cachorro' | 'gato', name: string): boolean {
     if (this.life.pets.length >= 4) { this.emit('toast', 'Limite de 4 animais de estimação.'); return false; }
-    if (!this.spend(450, 'a adoção')) return false;
+    if (!this.world.atHome) { this.emit('toast', 'Adote o pet quando estiver em casa.'); return false; }
+    if (!this.spend(450, 'a adoção', 'pets', 'Adoção')) return false;
     const colors = kind === 'cachorro' ? ['#c9a063', '#3b2416', '#f1ece3', '#8d8d8d', '#6a4127'] : ['#e09a4f', '#2b2b2b', '#f1ece3', '#9a9a96', '#6a4127'];
     const pet: Pet = {
       id: uid('pet'), name, kind, color: colors[Math.floor(this.rng() * colors.length)],
@@ -1161,4 +1295,12 @@ export class Simulation extends Emitter<SimEvents> {
 
 function add2(a: P, b: P): P {
   return { x: a.x + b.x, y: a.y + b.y };
+}
+
+const COOKING = new Set(['cozinhar', 'microondas', 'churrasco', 'piquenique']);
+function costCat(id: string): LedgerCat {
+  if (COOKING.has(id) || id === 'lanche' || id === 'compras' || id === 'jantar_fora' || id === 'cafe') return 'compras';
+  if (id === 'checkup') return 'saude';
+  if (id === 'curso' || id === 'reforco') return 'educacao';
+  return 'lazer';
 }

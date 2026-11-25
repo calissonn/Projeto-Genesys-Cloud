@@ -10,6 +10,7 @@ import type { GraphicsSettings } from '../render/engine';
 
 export interface AppApi {
   editor: Editor;
+  openMap?: () => void;
   startGame(p: Project): void;
   showStart(): void;
   toast(msg: string): void;
@@ -33,7 +34,7 @@ export function startScreen(app: AppApi): HTMLElement {
         h('button', { class: 'big', onclick: () => settingsDialog(app) }, '⚙ Configurações'),
         app.installPrompt ? h('button', { class: 'big', onclick: () => app.installPrompt?.() }, '⬇ Instalar aplicativo') : null,
       ),
-      h('p', { class: 'muted small' }, 'Versão 0.2 · Construção, decoração e simulação de vida. Funciona offline após o primeiro acesso.'),
+      h('p', { class: 'muted small' }, 'Versão 0.3 · Construção, decoração, vida e cidade. Funciona offline após o primeiro acesso.'),
     ),
   );
   return el;
@@ -204,6 +205,7 @@ export function gameMenu(app: AppApi) {
   const body = h('div', { class: 'menu-list' },
     h('button', { class: 'big', onclick: () => dlg.close() }, '▶ Continuar'),
     h('button', { class: 'big', onclick: () => { e.saveNow(); app.toast('Jogo salvo.'); dlg.close(); } }, '💾 Salvar agora'),
+    app.openMap ? h('button', { class: 'big', onclick: () => { dlg.close(); app.openMap?.(); } }, '🗺 Mapa da cidade') : null,
     h('button', { class: 'big', onclick: () => { dlg.close(); blueprintsDialog(app); } }, '📐 Projetos de casas'),
     h('button', { class: 'big', onclick: () => { dlg.close(); newGameDialog(app); } }, '＋ Novo jogo'),
     h('button', { class: 'big', onclick: () => { dlg.close(); loadDialog(app); } }, '📂 Carregar jogo'),

@@ -1,6 +1,6 @@
 # Morada — construa, decore e viva
 
-Jogo mobile 3D de construção, decoração residencial e simulação de vida.
+Jogo mobile 3D de construção, decoração residencial, simulação de vida e cidade.
 Identidade visual, personagens, interface, ícones e modelos são originais e procedurais. Não há recursos de terceiros.
 
 - **Tecnologia:** Three.js + TypeScript + Vite, empacotado como **PWA** (instalável no Android e no iOS e funciona offline).
@@ -18,7 +18,7 @@ npm run dev        # servidor de desenvolvimento (acessível na rede local)
 npm run build      # gera dist/ (PWA pronto para hospedar em qualquer servidor estático)
 npm run preview    # serve o build em http://localhost:4173
 npm test           # testes unitários (Vitest)
-npm run test:e2e   # testes ponta a ponta (construção e modo Vida) no Chromium; requer Playwright e o preview rodando
+npm run test:e2e   # testes ponta a ponta (construção, modo Vida, cidade) no Chromium; requer Playwright e o preview rodando
 ```
 
 Para instalar no celular, abra a URL do build no Chrome (Android) ou no Safari (iOS) e escolha
@@ -56,6 +56,41 @@ Use o seletor **🔨 Construir | 🏠 Viver** no canto superior esquerdo. Ao ent
 - **Tempo:** relógio com dias da semana, controles ⏸ ▶ ▶▶ ▶▶▶ e ciclo dia/noite real (o sol, o céu e as luminárias acompanham a hora).
 - **Câmeras:** livre, seguindo o personagem ou em **primeira pessoa** (arraste para olhar ao redor).
 - **Diário da família** com os acontecimentos. O estado do modo Vida é salvo junto com o jogo e **não** é afetado pelo desfazer do modo Construção.
+
+## Cidade e economia (Etapa 4)
+
+### Cidade de Nova Aurora
+- **Mapa da cidade** (botão 🗺 no modo Vida ou no menu ☰): bairros coloridos com quadras, endereços, estabelecimentos e imóveis. Arraste para mover e use a pinça, a roda do mouse ou os botões ＋/－ para o zoom.
+- **Bairros:** Centro (comercial), Vila Aurora (popular), Jardim das Palmeiras, Recanto do Lago (condomínio), Alto da Serra e Colinas Douradas (nobres). O botão **🏗 Abrir novo bairro** expande a cidade com novos loteamentos, casas e serviços.
+- **Estabelecimentos visitáveis:** cada um é um terreno 3D gerado proceduralmente, com funcionários nos postos e frequentadores autônomos.
+
+| Lugar | O que fazer |
+|---|---|
+| 🛒 Supermercado | Compras do mês (R$ 220 → 20 refeições na despensa; cozinhar em casa passa a não custar nada) |
+| 🍝 Restaurante | Refeição completa com diversão e vida social |
+| 🎬 Cinema | Sessões de filme sentado nas poltronas voltadas para a tela |
+| 🛍 Loja de roupas | Renovar o guarda-roupa (o visual do personagem muda de verdade) |
+| 🏢 Centro empresarial, 🖼 Galeria, 🏋 Academia, 🏫 Escola, 🏥 Hospital | Hora extra para quem trabalha na área, arte, musculação, aula de reforço e curso noturno, check-up |
+| 🌳 Parque, ⛲ Praça | Piquenique, exercícios ao ar livre, brinquedos, conhecer pessoas |
+
+- **Visitar outras casas:** as famílias da cidade (NPCs) moram em casas mobiliadas e recebem a sua família. Os moradores são persistentes: amizades e romances feitos fora de casa continuam valendo, e dá para convidá-los para morar junto ou casar.
+- **Transporte:** viajar leva 20 minutos de jogo e custa a gasolina (se houver um carro em casa) ou passagens de ônibus.
+
+### Imóveis
+- Comprar **terrenos vazios** ou **casas mobiliadas à venda**, construir e decorar nos seus imóveis, **mudar-se** para outro imóvel e **vender** por 90% do valor de mercado.
+- Só é possível construir nos seus próprios terrenos. Em lugares de terceiros, o jogo fica no modo Vida.
+- Cada imóvel guarda a sua construção. O saldo desconta apenas as obras dos seus imóveis.
+
+### Economia (Modo Simulação)
+- **Contas semanais** (toda segunda-feira, vencimento em 3 dias): água (moradores, chuveiros, piscinas), energia (moradores, eletrônicos, eletrodomésticos, luminárias, piscinas, elevador), IPTU (proporcional ao valor dos imóveis) e internet e gás. Há opção de **débito automático**.
+- **Contas vencidas cortam serviços:** sem energia, TV, computador, micro-ondas, som e outros eletrodomésticos param e as luzes não acendem à noite. Sem água, banhos, pias e máquina de lavar ficam indisponíveis. Pagar religa os serviços.
+- **Painel Finanças:** saldo, patrimônio, despensa, contas a pagar, extrato dos últimos 7 dias por categoria (salários, freelance, mercado, lazer, contas, imóveis, pets, transporte, saúde, educação) e **gráfico da evolução do patrimônio**.
+- **Profissões:** salários, promoções e horas extras no local de trabalho.
+
+### Clima e tempo
+- **Clima dinâmico:** sol, nublado, chuva e tempestade (com relâmpagos), alternando ao longo do dia, com temperatura que acompanha a hora. A chuva é desenhada em 3D, o céu escurece e a luz diminui.
+- **Efeitos da chuva:** quem fica ao ar livre leva o sentimento "Molhado de chuva", e a autonomia evita atividades externas.
+- Ciclo dia/noite real e iluminação dinâmica (Etapa 3).
 
 ## Modo Construção (Etapas 1 e 2)
 
@@ -128,11 +163,13 @@ Use o seletor **🔨 Construir | 🏠 Viver** no canto superior esquerdo. Ao ent
 ```
 src/
   core/      eventos, histórico (snapshots), armazenamento
-  model/     tipos, geometria (arcos, projeções, polígonos), projeto/custos, materiais, catálogo, casa modelo
+  model/     tipos, geometria (arcos, projeções, polígonos), projeto/custos, materiais, catálogo, casa modelo,
+             city (bairros, lotes, moradores) e gen (casas e estabelecimentos procedurais determinísticos)
   render/    engine (renderizador, sol, céu, terreno), câmera, texturas procedurais,
              malhas de paredes (curvas + vãos), pisos/aberturas/escadas/telhados, móveis procedurais, world (sincroniza cena)
   editor/    editor (estado, commits com validação de saldo, seleção, cômodos), entrada por toque, ferramentas
-  sim/       navegação A* multinível, interações (objetos, sociais, pets) e motor da simulação
+  sim/       navegação A* multinível, interações (objetos, sociais, pets), motor da simulação
+             e cityLife (viagens, imóveis, contas, clima)
   ui/        HUD de construção e de vida, criação de personagens (CAS), menus, catálogo e retratos 3D, ícones SVG
 ```
 - O estado do jogo é um objeto `Project` serializável. Todas as alterações passam por `editor.commit()`, que guarda um snapshot para o
@@ -141,6 +178,6 @@ src/
 - O modo Vida guarda seu estado em `project.life` (família, relações, relógio, saldo da vida). O desfazer da construção usa snapshots sem esse campo, para que reformas não "voltem no tempo".
 - Personagens são humanoides procedurais articulados (quadril, coluna, cabeça, ombros, cotovelos, quadris e joelhos), com mais de 20 animações procedurais (andar, sentar, dormir, comer, cozinhar, banho, exercício, natação, conversar, abraçar, beijar, dançar…).
 - A grade de navegação é refeita automaticamente quando a casa muda. Se uma reforma prender alguém, a pessoa é reposicionada no ponto livre mais próximo ao voltar para o modo Vida.
-- O próximo módulo (cidade) se conecta ao `Simulation` e ao `World` sem alterar os modelos existentes.
+- A cidade fica em `project.city`. O lote exibido é trocado com `editor.swapStructure()`: a construção do seu imóvel é salva no lote antes da troca, e estabelecimentos e casas de NPCs são regenerados de forma determinística (sem ocupar espaço no save). O desfazer da construção também ignora a cidade.
 
 Pendências e próximas etapas: veja [PENDENCIAS.md](./PENDENCIAS.md).

@@ -29,6 +29,8 @@ const LOW_WALL = 1.0;
 /** Sincroniza o projeto com a cena 3D e oferece seleção por raio. */
 export class World {
   objects = new Map<string, THREE.Object3D>();
+  /** Energia cortada: luminárias não acendem. */
+  powerOff = false;
   private lights: THREE.PointLight[] = [];
   private grid: THREE.LineSegments | null = null;
 
@@ -135,7 +137,7 @@ export class World {
       const obj = this.makeItem(it, p);
       this.tag(obj, { kind: 'item', id: it.id });
       const def = CATALOG_BY_ID.get(it.catalogId);
-      if (def?.light && night > 0.35 && this.lights.length < lightBudget && it.level <= view.level) {
+      if (def?.light && !this.powerOff && night > 0.35 && this.lights.length < lightBudget && it.level <= view.level) {
         const L = new THREE.PointLight('#ffd7a0', 6 * night, 7, 1.6);
         L.position.set(0, def.mount === 'teto' ? 0.1 : def.h * 0.85, 0);
         obj.add(L);

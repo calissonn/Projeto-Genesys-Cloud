@@ -51,6 +51,7 @@ export const CATEGORIES: CategoryDef[] = [
   { id: 'plantas', name: 'Plantas', icon: '🪴' },
   { id: 'infantil', name: 'Infantil', icon: '🧸' },
   { id: 'estrutura', name: 'Estrutura', icon: '🏛' },
+  { id: 'comercio', name: 'Comércio e serviços', icon: '🏪' },
 ];
 
 const d = (
@@ -164,6 +165,21 @@ export const CATALOG: CatalogDef[] = [
   d('pilar', 'Pilar quadrado', 'estrutura', 550, 0.3, 0.3, 3.0, { material: 'pintura', color: '#f1ece3' }),
   d('guarda_corpo', 'Guarda-corpo de vidro (2 m)', 'estrutura', 1400, 2.0, 0.06, 1.05, { material: 'vidro', color: '#bcd7e0' }),
   d('elevador', 'Elevador residencial', 'estrutura', 85000, 1.4, 1.4, 3.0, { material: 'metal', color: '#b9bcc0' }),
+  // Comércio e serviços (usados pelos estabelecimentos da cidade e também em casa)
+  d('caixa', 'Caixa / balcão de atendimento', 'comercio', 2600, 1.6, 0.7, 1.05, { surface: 1.05, material: 'madeira_escura', color: '#6b4329', affords: ['guardar'] }),
+  d('prateleira_mercado', 'Gôndola de mercado', 'comercio', 1800, 2.0, 0.6, 1.6, { material: 'metal', color: '#e9f0f2', affords: ['armazenar_comida'] }),
+  d('refrigerador_mercado', 'Refrigerador expositor', 'comercio', 7800, 2.0, 0.8, 2.0, { material: 'metal', color: '#e9f0f2', affords: ['armazenar_comida'] }),
+  d('mesa_restaurante', 'Mesa de restaurante', 'comercio', 1400, 0.9, 0.9, 0.76, { surface: 0.76, material: 'madeira_escura', color: '#6b4329', affords: ['comer'] }),
+  d('tela_cinema', 'Tela de projeção', 'comercio', 24000, 6.0, 0.3, 3.4, { material: 'metal_preto', color: '#1f1f22', affords: ['assistir_tv'] }),
+  d('poltrona_cinema', 'Poltrona de cinema', 'comercio', 1200, 0.7, 0.8, 1.0, { material: 'tecido', color: '#8c2f2a', affords: ['sentar'] }),
+  d('arara_roupas', 'Arara de roupas', 'comercio', 900, 1.4, 0.5, 1.6, { material: 'metal', color: '#b9bcc0', affords: ['guardar'] }),
+  d('lousa', 'Lousa escolar', 'comercio', 1100, 2.6, 0.08, 1.2, { mount: 'parede', material: 'madeira', color: '#2f4f3b', affords: ['estudar'] }),
+  d('carteira', 'Carteira escolar', 'comercio', 420, 0.65, 0.5, 0.72, { surface: 0.72, material: 'madeira', color: '#c49a6c', affords: ['estudar'] }),
+  d('maca', 'Maca hospitalar', 'comercio', 5200, 0.85, 2.0, 0.9, { material: 'metal', color: '#e9f0f2', affords: ['deitar'] }),
+  d('aparelho_musculacao', 'Aparelho de musculação', 'comercio', 6800, 1.2, 1.6, 2.0, { material: 'metal_preto', color: '#2c2d30', affords: ['exercitar'] }),
+  d('estacao_trabalho', 'Estação de trabalho', 'comercio', 3600, 1.5, 0.75, 1.2, { surface: 0.75, material: 'pintura', color: '#f1ece3', affords: ['trabalhar'] }),
+  d('toalha_piquenique', 'Toalha de piquenique', 'comercio', 160, 1.6, 1.6, 0.25, { material: 'tecido', color: '#b5523b', affords: ['comer'] }),
+  d('barra_exercicio', 'Barras de exercício', 'comercio', 2400, 2.2, 0.8, 2.2, { material: 'metal', color: '#3e6a9a', affords: ['exercitar'] }),
 ];
 
 export const CATALOG_BY_ID = new Map(CATALOG.map((c) => [c.id, c]));

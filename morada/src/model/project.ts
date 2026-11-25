@@ -133,8 +133,39 @@ export function computeCost(p: Project): CostBreakdown {
   return c;
 }
 
+/** Custo das obras pagas pelo jogador em todos os seus imóveis. */
+export function ownedConstruction(p: Project): number {
+  const c = p.city;
+  if (!c) return computeCost(p).total;
+  let total = 0;
+  for (const l of c.lots) {
+    if (l.owner !== 'jogador') continue;
+    const cost = l.id === c.currentLotId ? computeCost(p).total : l.cost ?? 0;
+    total += cost - (l.base ?? 0);
+  }
+  return total;
+}
+
 export function balance(p: Project): number {
-  return p.mode === 'criativo' ? Infinity : p.funds + (p.life?.cash ?? 0) - computeCost(p).total;
+  return p.mode === 'criativo' ? Infinity : p.funds + (p.life?.cash ?? 0) - ownedConstruction(p);
+}
+
+/** Patrimônio: saldo + valor de mercado dos imóveis do jogador. */
+export function netWorth(p: Project): number {
+  const bal = balance(p);
+  if (!Number.isFinite(bal)) return bal;
+  const c = p.city;
+  if (!c) return bal + computeCost(p).total + p.lot.price;
+  let v = bal;
+  for (const l of c.lots) if (l.owner === 'jogador') v += l.price + (l.id === c.currentLotId ? computeCost(p).total : l.cost ?? 0);
+  return v;
+}
+
+/** Só se pode construir em terrenos do jogador. */
+export function canBuildHere(p: Project): boolean {
+  const c = p.city;
+  if (!c) return true;
+  return c.lots.find((l) => l.id === c.currentLotId)?.owner === 'jogador';
 }
 
 export function fmtMoney(v: number): string {
@@ -195,6 +226,7 @@ export function sanitizeProject(raw: any): Project {
     roofs: raw.roofs ?? [],
     items: raw.items ?? [],
     life: raw.life ? sanitizeLife(raw.life) : undefined,
+    city: raw.city && Array.isArray(raw.city.lots) ? raw.city : undefined,
     createdAt: Number(raw.createdAt ?? Date.now()),
     updatedAt: Number(raw.updatedAt ?? Date.now()),
   };
@@ -212,6 +244,11 @@ function sanitizeLife(l: any): LifeState {
   out.relationships = l.relationships ?? [];
   out.log = (l.log ?? []).slice(-60);
   out.clock = { minutes: Number(l.clock?.minutes ?? 8 * 60) };
+  out.ledger = (l.ledger ?? []).slice(-300);
+  out.bills = l.bills ?? [];
+  out.history = (l.history ?? []).slice(-90);
+  out.groceries = Number(l.groceries ?? 0);
+  out.weather = l.weather ?? { kind: 'sol', until: 0 };
   return out;
 }
 

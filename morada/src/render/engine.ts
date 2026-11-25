@@ -30,6 +30,11 @@ export class Engine {
   activeCamera: THREE.Camera | null = null;
   settings: GraphicsSettings;
   nightFactor = 0;
+  /** Nebulosidade (0 a 1) e intensidade da chuva (0 a 1). */
+  cloud = 0;
+  rain = 0;
+  private rainMesh: THREE.LineSegments | null = null;
+  private flashT = 0;
 
   constructor(public canvas: HTMLCanvasElement, settings: GraphicsSettings) {
     this.settings = settings;
@@ -115,19 +120,71 @@ export class Engine {
     this.sun.target.position.set(0, 0, 0);
     const warm = THREE.MathUtils.clamp(1 - elev * 2.5, 0, 1);
     this.sun.color.setRGB(1, 0.95 - warm * 0.3, 0.88 - warm * 0.5);
-    this.sun.intensity = 2.8 * dayness;
-    this.hemi.intensity = 0.25 + 0.75 * dayness;
+    this.sun.intensity = 2.8 * dayness * (1 - this.cloud * 0.75);
+    this.hemi.intensity = (0.25 + 0.75 * dayness) * (1 - this.cloud * 0.25);
     this.ambient.intensity = 0.12 + 0.05 * (1 - dayness);
     const day = new THREE.Color('#9fc8ea');
     const dusk = new THREE.Color('#e9a77c');
     const night = new THREE.Color('#0d1628');
     this.skyColor.copy(night).lerp(dusk, Math.min(1, dayness * 2)).lerp(day, Math.max(0, dayness * 2 - 1) * (1 - warm * 0.6));
+    // Céu encoberto fica acinzentado.
+    const grey = new THREE.Color().setRGB(0.55, 0.58, 0.62).multiplyScalar(0.25 + 0.75 * dayness);
+    this.skyColor.lerp(grey, this.cloud * 0.85);
     this.scene.background = this.skyColor;
     if (!this.scene.fog) this.scene.fog = new THREE.Fog(this.skyColor, 120, 320);
     else (this.scene.fog as THREE.Fog).color.copy(this.skyColor);
     this.scene.environmentIntensity = 0.12 + 0.35 * dayness;
     this.renderer.toneMappingExposure = 0.85 + 0.25 * dayness;
     this.fitShadow();
+    this.invalidate();
+  }
+
+  /** Define o clima visível. */
+  setWeather(kind: 'sol' | 'nublado' | 'chuva' | 'tempestade') {
+    this.cloud = { sol: 0, nublado: 0.55, chuva: 0.8, tempestade: 1 }[kind];
+    this.rain = { sol: 0, nublado: 0, chuva: 0.6, tempestade: 1 }[kind];
+    if (this.rain > 0 && !this.rainMesh) {
+      const N = this.settings.quality === 'baixa' ? 500 : this.settings.quality === 'media' ? 1100 : 1800;
+      const pos = new Float32Array(N * 6);
+      for (let i = 0; i < N; i++) {
+        const x = (Math.random() - 0.5) * 50, y = Math.random() * 25, z = (Math.random() - 0.5) * 50;
+        pos.set([x, y, z, x + 0.05, y - 0.55, z + 0.03], i * 6);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      this.rainMesh = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#c9d6e3', transparent: true, opacity: 0.5, depthWrite: false }));
+      this.rainMesh.frustumCulled = false;
+      this.scene.add(this.rainMesh);
+    }
+    if (this.rainMesh) {
+      this.rainMesh.visible = this.rain > 0;
+      (this.rainMesh.material as THREE.LineBasicMaterial).opacity = 0.25 + this.rain * 0.35;
+    }
+    this.setHour(this.settings.hour);
+  }
+
+  /** Anima a chuva em volta do ponto observado e os relâmpagos. */
+  updateWeather(dt: number, center: THREE.Vector3) {
+    if (this.rainMesh && this.rain > 0) {
+      const a = this.rainMesh.geometry.attributes.position as THREE.BufferAttribute;
+      const arr = a.array as Float32Array;
+      const fall = dt * (18 + this.rain * 10);
+      for (let i = 0; i < arr.length; i += 6) {
+        arr[i + 1] -= fall; arr[i + 4] -= fall;
+        if (arr[i + 4] < 0) { const y = 22 + Math.random() * 4; arr[i + 1] = y; arr[i + 4] = y - 0.55; }
+      }
+      a.needsUpdate = true;
+      this.rainMesh.position.set(center.x, center.y - 2, center.z);
+    }
+    if (this.flashT > 0) {
+      this.flashT -= dt;
+      this.ambient.intensity = this.flashT > 0 ? 2.5 : 0.12 + 0.05 * this.nightFactor;
+    }
+  }
+
+  flash() {
+    this.flashT = 0.12;
+    this.ambient.intensity = 2.5;
     this.invalidate();
   }
 

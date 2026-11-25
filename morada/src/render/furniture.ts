@@ -795,6 +795,131 @@ const builders: Record<string, (c: Ctx) => void> = {
     for (const sx of [-1, 1]) B(g, 0.01, h - 0.16, d - 0.06, glass, sx * (w / 2 - 0.02), 0.08, 0);
     B(g, 0.12, 0.2, 0.02, BLACK(), w / 2 - 0.12, 1.1, d / 2 - 0.02);
   },
+  caixa: (c) => {
+    const { w, d, h } = c.def;
+    B(c.g, w, h - 0.05, d, c.main, 0, 0, 0);
+    B(c.g, w + 0.06, 0.05, d + 0.06, getMaterial('granito'), 0, h - 0.05, 0);
+    B(c.g, 0.3, 0.22, 0.2, BLACK(), w / 2 - 0.3, h, -0.1);
+    B(c.g, 0.28, 0.18, 0.01, SCREEN(), w / 2 - 0.3, h + 0.02, -0.21).rotation.x = 0.2;
+    B(c.g, 0.4, 0.03, 0.3, plain('#2c2d30', 0.3, 0.5), -w / 4, h, 0);
+  },
+  prateleira_mercado: (c) => {
+    const { w, d, h } = c.def;
+    const g = c.g, m = c.main;
+    B(g, w, 0.1, d, m, 0, 0, 0);
+    B(g, w, h, 0.04, m, 0, 0, 0);
+    const cols = ['#b5523b', '#e0b84f', '#3e6a9a', '#4f7a4a', '#f1ece3', '#c76d8a', '#7a4b2a'];
+    for (let i = 0; i < 4; i++) {
+      const y = 0.1 + i * 0.38;
+      for (const sz of [-1, 1]) {
+        B(g, w, 0.025, d / 2 - 0.04, m, 0, y, sz * d / 4);
+        for (let k = 0; k < 9; k++) {
+          const bw = w / 9 - 0.03;
+          B(g, bw, 0.16 + ((k * 7 + i) % 4) * 0.04, d / 2 - 0.12, plain(cols[(k + i * 3) % cols.length], 0.6), -w / 2 + (w / 9) * (k + 0.5), y + 0.025, sz * d / 4);
+        }
+      }
+    }
+  },
+  refrigerador_mercado: (c) => {
+    const { w, d, h } = c.def;
+    B(c.g, w, h, d, c.main, 0, 0, 0);
+    B(c.g, w - 0.08, h - 0.3, 0.02, plain('#cfe6ee', 0.05, 0.2, { transparent: true, opacity: 0.45 }), 0, 0.15, d / 2);
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 6; k++) C(c.g, 0.05, 0.05, 0.22, plain(['#3e6a9a', '#e0b84f', '#f1ece3', '#b5523b'][(i + k) % 4], 0.3), -w / 2 + 0.2 + k * (w - 0.4) / 5, 0.2 + i * 0.42, 0.1, 10);
+    for (let k = 1; k < 3; k++) B(c.g, 0.03, h - 0.3, 0.04, METAL(), -w / 2 + (w * k) / 3, 0.15, d / 2 + 0.01);
+  },
+  mesa_restaurante: (c) => {
+    const { w, d, h } = c.def;
+    B(c.g, w, 0.04, d, c.main, 0, h - 0.04, 0);
+    B(c.g, w + 0.02, 0.005, d + 0.02, plain('#f6f2ea', 0.9), 0, h, 0);
+    C(c.g, 0.04, 0.05, h - 0.04, BLACK(), 0, 0, 0, 10);
+    C(c.g, 0.25, 0.27, 0.02, BLACK(), 0, 0, 0, 20);
+    C(c.g, 0.03, 0.04, 0.16, plain('#cfe6ee', 0.05, 0.1, { transparent: true, opacity: 0.6 }), 0, h, 0, 10);
+  },
+  tela_cinema: (c) => {
+    const { w, d, h } = c.def;
+    B(c.g, w + 0.3, h + 0.3, d * 0.3, BLACK(), 0, 0.5, 0);
+    B(c.g, w, h - 0.2, 0.02, plain('#f6f6f4', 0.9, 0, { emissive: new THREE.Color('#7f8fa6'), emissiveIntensity: 0.35 }), 0, 0.65, d * 0.15 + 0.01);
+    B(c.g, w + 0.6, 0.5, 0.25, plain('#8c2f2a', 0.9), 0, 0, 0.1);
+  },
+  poltrona_cinema: (c) => {
+    const { w, d } = c.def;
+    const m = c.main;
+    R(c.g, w - 0.1, 0.14, d - 0.15, m, 0, 0.4, 0.05, 0.04);
+    R(c.g, w - 0.1, 0.62, 0.12, m, 0, 0.42, -d / 2 + 0.08, 0.04).rotation.x = -0.15;
+    for (const sx of [-1, 1]) B(c.g, 0.06, 0.65, d - 0.1, BLACK(), sx * (w / 2 - 0.03), 0, 0);
+  },
+  arara_roupas: (c) => {
+    const { w, h } = c.def;
+    for (const sx of [-1, 1]) { C(c.g, 0.015, 0.015, h, c.main, sx * (w / 2 - 0.05), 0, 0, 8); B(c.g, 0.04, 0.02, 0.45, c.main, sx * (w / 2 - 0.05), 0, 0); }
+    C(c.g, 0.012, 0.012, w, c.main, 0, 0, 0, 8).rotation.z = Math.PI / 2;
+    c.g.children[c.g.children.length - 1].position.set(0, h - 0.05, 0);
+    const cols = ['#3e6a9a', '#b5523b', '#f1ece3', '#e0b84f', '#2f4f3b', '#c76d8a', '#1f1f22', '#9fc6c5'];
+    for (let i = 0; i < 9; i++) {
+      const x = -w / 2 + 0.15 + i * (w - 0.3) / 8;
+      B(c.g, 0.06, 0.7, 0.42, plain(cols[i % cols.length], 0.85), x, h - 0.8, 0);
+    }
+  },
+  lousa: (c) => {
+    const { w, d, h } = c.def;
+    B(c.g, w + 0.08, h + 0.08, d * 0.5, getMaterial('madeira'), 0, -0.04, 0);
+    B(c.g, w, h, 0.01, plain(c.color, 0.95), 0, 0, d * 0.25 + 0.005);
+    B(c.g, w * 0.5, 0.02, 0.005, plain('#f6f6f4', 0.9), -w * 0.15, h * 0.7, d * 0.25 + 0.012);
+    B(c.g, w * 0.35, 0.02, 0.005, plain('#f6f6f4', 0.9), -w * 0.22, h * 0.55, d * 0.25 + 0.012);
+    B(c.g, w + 0.1, 0.03, 0.08, getMaterial('madeira'), 0, -0.06, 0.04);
+  },
+  carteira: (c) => {
+    const { w, d, h } = c.def;
+    B(c.g, w, 0.025, d, c.main, 0, h - 0.025, 0);
+    for (const sx of [-1, 1]) B(c.g, 0.03, h - 0.025, 0.03, METAL(), sx * (w / 2 - 0.04), 0, -d / 2 + 0.06);
+    for (const sx of [-1, 1]) B(c.g, 0.03, h - 0.025, 0.03, METAL(), sx * (w / 2 - 0.04), 0, d / 2 - 0.06);
+    B(c.g, w - 0.1, 0.12, d - 0.1, METAL(), 0, h - 0.17, 0);
+  },
+  maca: (c) => {
+    const { w, d } = c.def;
+    legs4(c.g, w, d, 0.55, METAL(), 0.08, 0.02);
+    B(c.g, w, 0.06, d, METAL(), 0, 0.55, 0);
+    R(c.g, w - 0.06, 0.12, d - 0.1, WHITE(), 0, 0.61, 0, 0.04);
+    R(c.g, w * 0.6, 0.08, 0.3, WHITE(), 0, 0.73, -d / 2 + 0.25, 0.04);
+    for (const sx of [-1, 1]) B(c.g, 0.02, 0.2, d * 0.5, METAL(), sx * (w / 2), 0.62, 0);
+  },
+  aparelho_musculacao: (c) => {
+    const { w, d, h } = c.def;
+    const m = c.main;
+    B(c.g, w, 0.08, d, m, 0, 0, 0);
+    for (const sx of [-1, 1]) B(c.g, 0.08, h, 0.08, m, sx * (w / 2 - 0.05), 0, -d / 2 + 0.1);
+    B(c.g, w, 0.08, 0.08, m, 0, h - 0.08, -d / 2 + 0.1);
+    for (let i = 0; i < 8; i++) B(c.g, 0.3, 0.05, 0.15, plain('#555', 0.5, 0.6), 0, 0.1 + i * 0.06, -d / 2 + 0.1);
+    R(c.g, 0.4, 0.1, 0.9, getMaterial('couro', '#1f1f22'), 0, 0.45, 0.2, 0.03);
+    B(c.g, 0.1, 0.4, 0.1, m, 0, 0.05, 0.2);
+    C(c.g, 0.015, 0.015, w * 0.9, METAL(), 0, h * 0.7, -d / 2 + 0.3, 8).rotation.z = Math.PI / 2;
+  },
+  estacao_trabalho: (c) => {
+    const { w, d, h } = c.def;
+    B(c.g, w, 0.03, d, c.main, 0, 0.72, 0);
+    for (const sx of [-1, 1]) B(c.g, 0.04, 0.72, d - 0.05, METAL(), sx * (w / 2 - 0.03), 0, 0);
+    B(c.g, w, h - 0.75, 0.03, plain('#7a8a96', 0.9), 0, 0.75, -d / 2 + 0.015);
+    R(c.g, 0.6, 0.36, 0.03, BLACK(), 0, 0.9, -0.15, 0.006);
+    B(c.g, 0.57, 0.33, 0.004, SCREEN(), 0, 0.915, -0.133);
+    B(c.g, 0.05, 0.15, 0.05, BLACK(), 0, 0.75, -0.17);
+    R(c.g, 0.42, 0.015, 0.14, plain('#2c2d30', 0.5), 0, 0.75, 0.12, 0.005);
+  },
+  toalha_piquenique: (c) => {
+    const { w, d } = c.def;
+    B(c.g, w, 0.01, d, c.main, 0, 0, 0);
+    for (let i = 0; i < 4; i++) B(c.g, w, 0.012, d / 8, plain('#f6f2ea', 0.9), 0, 0, -d / 2 + d / 16 + i * d / 4);
+    B(c.g, 0.45, 0.25, 0.3, getMaterial('madeira'), w / 2 - 0.35, 0.01, -d / 2 + 0.3);
+    C(c.g, 0.1, 0.1, 0.02, WHITE(), -0.2, 0.01, 0.1, 16);
+    S(c.g, 0.05, plain('#b5523b', 0.4), -0.2, 0.06, 0.1);
+  },
+  barra_exercicio: (c) => {
+    const { w, d, h } = c.def;
+    for (const x of [-w / 2 + 0.05, 0, w / 2 - 0.05]) C(c.g, 0.04, 0.04, x === 0 ? h * 0.7 : h, c.main, x, 0, 0, 10);
+    C(c.g, 0.02, 0.02, w / 2, METAL(), -w / 4, 0, 0, 8).rotation.z = Math.PI / 2;
+    c.g.children[c.g.children.length - 1].position.set(-w / 4, h - 0.05, 0);
+    C(c.g, 0.02, 0.02, w / 2, METAL(), w / 4, 0, 0, 8).rotation.z = Math.PI / 2;
+    c.g.children[c.g.children.length - 1].position.set(w / 4, h * 0.7 - 0.05, 0);
+    B(c.g, w, 0.05, d, plain('#4f7a4a', 1), 0, 0, 0);
+  },
 };
 
 /** Cria o modelo 3D do objeto do catálogo. */

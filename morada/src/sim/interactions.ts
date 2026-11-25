@@ -31,6 +31,7 @@ const SEATS: Record<string, Spot[]> = {
   cadeira: [sit(0, 0.04, 0.47, 0.6)],
   banqueta: [sit(0, 0, 0.77, 0.55)],
   cadeira_escritorio: [sit(0, 0, 0.53, 0.65)],
+  poltrona_cinema: [sit(0, 0.05, 0.54, 0.75)],
   banco_jardim: [sit(-0.4, 0.02, 0.45), sit(0.4, 0.02, 0.45)],
   vaso: [sit(0, 0.12, 0.43, 0.75)],
 };
@@ -45,6 +46,7 @@ const LIE: Record<string, Spot[]> = {
   espreguicadeira: [{ kind: 'lie', x: 0, z: 0.15, h: 0.32, rot: 0, ax: 0.75, az: 0.2 }],
   sofa3: [{ kind: 'lie', x: 0, z: 0.08, h: 0.52, rot: Math.PI / 2, ax: 0, az: 0.9 }],
   banheira: [{ kind: 'lie', x: 0, z: 0, h: 0.28, rot: Math.PI / 2, ax: 0, az: 0.85 }],
+  maca: [{ kind: 'lie', x: 0, z: 0.1, h: 0.67, rot: 0, ax: 0.8, az: 0.3 }],
   ofuro: [{ kind: 'lie', x: 0, z: 0.1, h: 0.4, rot: 0, ax: 0, az: 1.4 }],
 };
 
@@ -91,6 +93,16 @@ export interface InteractionDef {
   visitors?: boolean;
   hidden?: boolean;
   traitBonus?: Partial<Record<string, number>>;
+  /** Efeito especial ao concluir. */
+  effect?: 'groceries' | 'outfit' | 'checkup' | 'curso' | 'reforco' | 'horaextra';
+  /** Assento deve estar voltado para o objeto (TV, telão). */
+  faceObject?: boolean;
+  maxSeatDist?: number;
+  /** Depende de energia elétrica / água encanada (contas em dia). */
+  power?: boolean;
+  water?: boolean;
+  /** Só para quem trabalha na área do estabelecimento. */
+  careerAt?: boolean;
 }
 
 const ADULTS: AgeStage[] = ['adolescente', 'jovem', 'adulto', 'idoso'];
@@ -105,27 +117,38 @@ export const INTERACTIONS: InteractionDef[] = [
   { id: 'lanche', name: 'Fazer um lanche', icon: '🥪', objects: ['geladeira', 'frigobar'], spot: 'stand', anim: 'eat', minutes: 12, rates: { fome: 90 }, cost: 6, ages: WALKERS, visitors: true },
   { id: 'cozinhar', name: 'Cozinhar refeição', icon: '🍳', objects: ['fogao'], spot: 'stand', anim: 'cook', minutes: 30, rates: {}, cost: 18, skill: { id: 'culinaria', perHour: 0.5 }, then: 'comer', ages: ADULTS, traitBonus: { glutao: 1.5 } },
   { id: 'comer', name: 'Comer refeição', icon: '🍽', objects: ['cadeira', 'banqueta', 'sofa3', 'sofa_l', 'poltrona', 'banco_jardim'], spot: 'sit', anim: 'eat', minutes: 25, untilFull: 'fome', rates: { fome: 190, diversao: 6 }, ages: WALKERS, hidden: true },
-  { id: 'cafe', name: 'Tomar um café', icon: '☕', objects: ['cafeteira'], spot: 'stand', anim: 'eat', minutes: 10, rates: { energia: 50, diversao: 10 }, cost: 2, ages: ADULTS, visitors: true },
-  { id: 'microondas', name: 'Esquentar comida', icon: '🍲', objects: ['microondas'], spot: 'stand', anim: 'cook', minutes: 8, rates: {}, cost: 10, then: 'comer', ages: WALKERS },
+  { id: 'cafe', name: 'Tomar um café', icon: '☕', objects: ['cafeteira'], spot: 'stand', anim: 'eat', minutes: 10, rates: { energia: 50, diversao: 10 }, cost: 2, ages: ADULTS, visitors: true, power: true },
+  { id: 'microondas', name: 'Esquentar comida', icon: '🍲', objects: ['microondas'], spot: 'stand', anim: 'cook', minutes: 8, rates: {}, cost: 10, then: 'comer', ages: WALKERS, power: true },
   { id: 'churrasco', name: 'Fazer churrasco', icon: '🍖', objects: ['churrasqueira'], spot: 'stand', anim: 'cook', minutes: 60, rates: { diversao: 20, social: 8 }, cost: 60, skill: { id: 'culinaria', perHour: 0.6 }, then: 'comer', ages: ADULTS },
-  { id: 'banho', name: 'Tomar banho', icon: '🚿', objects: ['chuveiro'], spot: 'inside', anim: 'shower', minutes: 25, untilFull: 'higiene', rates: { higiene: 220, conforto: 10 }, ages: WALKERS, traitBonus: { limpinho: 1.5 } },
-  { id: 'banheira', name: 'Banho de banheira', icon: '🛁', objects: ['banheira', 'ofuro'], spot: 'lie', anim: 'lie', minutes: 45, untilFull: 'higiene', rates: { higiene: 140, conforto: 50, diversao: 10 }, ages: WALKERS },
+  { id: 'banho', name: 'Tomar banho', icon: '🚿', objects: ['chuveiro'], spot: 'inside', anim: 'shower', minutes: 25, untilFull: 'higiene', rates: { higiene: 220, conforto: 10 }, ages: WALKERS, traitBonus: { limpinho: 1.5 }, water: true },
+  { id: 'banheira', name: 'Banho de banheira', icon: '🛁', objects: ['banheira', 'ofuro'], spot: 'lie', anim: 'lie', minutes: 45, untilFull: 'higiene', rates: { higiene: 140, conforto: 50, diversao: 10 }, ages: WALKERS, water: true },
   { id: 'banheiro', name: 'Usar o banheiro', icon: '🚽', objects: ['vaso'], spot: 'sit', anim: 'sit', minutes: 8, untilFull: 'bexiga', rates: { bexiga: 900 }, ages: WALKERS, visitors: true },
-  { id: 'maos', name: 'Lavar as mãos', icon: '🧼', objects: ['pia_banheiro', 'pia_cozinha', 'tanque'], spot: 'stand', anim: 'wash', minutes: 6, rates: { higiene: 120 }, ages: WALKERS, visitors: true },
+  { id: 'maos', name: 'Lavar as mãos', icon: '🧼', objects: ['pia_banheiro', 'pia_cozinha', 'tanque'], spot: 'stand', anim: 'wash', minutes: 6, rates: { higiene: 120 }, ages: WALKERS, visitors: true, water: true },
   { id: 'espelho', name: 'Arrumar-se no espelho', icon: '🪞', objects: ['espelho'], spot: 'stand', anim: 'wash', minutes: 10, rates: { higiene: 40, diversao: 20 }, skill: { id: 'carisma', perHour: 0.6 }, ages: WALKERS },
-  { id: 'tv', name: 'Assistir TV', icon: '📺', objects: ['tv', 'tv_parede'], spot: 'seatNear', anim: 'watch', minutes: 60, rates: { diversao: 30, conforto: 6 }, ages: WALKERS, visitors: true },
-  { id: 'freela', name: 'Trabalhar como freelancer', icon: '💻', objects: ['computador'], spot: 'seatNear', anim: 'type', minutes: 120, rates: { diversao: -6 }, earn: 55, skill: { id: 'logica', perHour: 0.35 }, ages: ADULTS },
-  { id: 'jogar', name: 'Jogar no computador', icon: '🎮', objects: ['computador'], spot: 'seatNear', anim: 'type', minutes: 60, rates: { diversao: 38 }, ages: WALKERS, traitBonus: { nerd: 1.6 } },
+  { id: 'tv', name: 'Assistir TV', icon: '📺', objects: ['tv', 'tv_parede'], spot: 'seatNear', anim: 'watch', minutes: 60, rates: { diversao: 30, conforto: 6 }, ages: WALKERS, visitors: true, faceObject: true, power: true },
+  { id: 'freela', name: 'Trabalhar como freelancer', icon: '💻', objects: ['computador'], spot: 'seatNear', anim: 'type', minutes: 120, rates: { diversao: -6 }, earn: 55, skill: { id: 'logica', perHour: 0.35 }, ages: ADULTS, power: true },
+  { id: 'jogar', name: 'Jogar no computador', icon: '🎮', objects: ['computador'], spot: 'seatNear', anim: 'type', minutes: 60, rates: { diversao: 38 }, ages: WALKERS, traitBonus: { nerd: 1.6 }, power: true },
   { id: 'ler', name: 'Ler um livro', icon: '📖', objects: ['estante', 'livros'], spot: 'seatNear', anim: 'read', minutes: 60, rates: { diversao: 16, conforto: 4 }, skill: { id: 'logica', perHour: 0.5 }, ages: WALKERS, traitBonus: { nerd: 1.8 } },
   { id: 'licao', name: 'Fazer lição de casa', icon: '✏', objects: ['escrivaninha', 'mesa_jantar', 'mesa_redonda'], spot: 'seatNear', anim: 'read', minutes: 45, rates: { diversao: -4 }, skill: { id: 'logica', perHour: 0.6 }, ages: ['crianca', 'adolescente'] },
   { id: 'desenhar', name: 'Desenhar projetos', icon: '📐', objects: ['escrivaninha', 'bancada_ferr'], spot: 'seatNear', anim: 'type', minutes: 60, rates: { diversao: 14 }, skill: { id: 'criatividade', perHour: 0.5 }, ages: ADULTS, traitBonus: { criativo: 1.6 } },
   { id: 'exercitar', name: 'Exercitar-se', icon: '🏃', objects: ['esteira', 'bicicleta'], spot: 'stand', anim: 'exercise', minutes: 45, rates: { diversao: 14, energia: -18, higiene: -20 }, skill: { id: 'fitness', perHour: 0.7 }, ages: ['crianca', ...ADULTS], traitBonus: { ativo: 2 } },
   { id: 'nadar', name: 'Nadar', icon: '🏊', objects: ['piscina_ret', 'piscina_redonda'], spot: 'inside', anim: 'swim', minutes: 50, rates: { diversao: 34, energia: -12, higiene: 10 }, skill: { id: 'fitness', perHour: 0.5 }, ages: WALKERS, visitors: true, traitBonus: { ativo: 1.6 } },
-  { id: 'lavar_roupa', name: 'Lavar roupas', icon: '🧺', objects: ['lavadora', 'tanque'], spot: 'stand', anim: 'wash', minutes: 30, rates: { conforto: 8, higiene: 10 }, cost: 3, ages: ADULTS },
+  { id: 'lavar_roupa', name: 'Lavar roupas', icon: '🧺', objects: ['lavadora', 'tanque'], spot: 'stand', anim: 'wash', minutes: 30, rates: { conforto: 8, higiene: 10 }, cost: 3, ages: ADULTS, power: true, water: true },
   { id: 'brincar', name: 'Brincar', icon: '🧸', objects: ['bau_brinquedos', 'ursinho', 'escorregador'], spot: 'stand', anim: 'play', minutes: 40, rates: { diversao: 45, social: 6 }, ages: KIDS },
   { id: 'admirar', name: 'Admirar', icon: '🖼', objects: ['quadro', 'fonte', 'arvore', 'canteiro'], spot: 'stand', anim: 'idle', minutes: 10, rates: { diversao: 22 }, ages: WALKERS, visitors: true },
   { id: 'regar', name: 'Cuidar da planta', icon: '🪴', objects: ['planta_grande', 'palmeira_vaso', 'canteiro', 'arbusto'], spot: 'stand', anim: 'wash', minutes: 10, rates: { diversao: 18, conforto: 6 }, ages: WALKERS },
-  { id: 'som', name: 'Dançar ao som da música', icon: '🎵', objects: ['som'], spot: 'stand', anim: 'dance', minutes: 40, rates: { diversao: 40, energia: -6 }, ages: WALKERS, visitors: true },
+  { id: 'som', name: 'Dançar ao som da música', icon: '🎵', objects: ['som'], spot: 'stand', anim: 'dance', minutes: 40, rates: { diversao: 40, energia: -6 }, ages: WALKERS, visitors: true, power: true },
+  // Estabelecimentos da cidade
+  { id: 'compras', name: 'Fazer compras do mês', icon: '🛒', objects: ['caixa', 'prateleira_mercado', 'refrigerador_mercado'], spot: 'stand', anim: 'wash', minutes: 25, rates: { diversao: 4 }, cost: 220, effect: 'groceries', ages: ['adolescente', 'jovem', 'adulto', 'idoso'] },
+  { id: 'jantar_fora', name: 'Comer no restaurante', icon: '🍝', objects: ['mesa_restaurante'], spot: 'seatNear', maxSeatDist: 1.3, anim: 'eat', minutes: 50, untilFull: 'fome', rates: { fome: 150, diversao: 18, social: 14 }, cost: 55, ages: WALKERS, visitors: true },
+  { id: 'filme', name: 'Assistir ao filme', icon: '🎬', objects: ['tela_cinema'], spot: 'seatNear', faceObject: true, maxSeatDist: 16, anim: 'watch', minutes: 110, rates: { diversao: 55, conforto: 8 }, cost: 32, ages: WALKERS, visitors: true, power: true },
+  { id: 'roupas', name: 'Renovar o guarda-roupa', icon: '👕', objects: ['arara_roupas'], spot: 'stand', anim: 'wash', minutes: 25, rates: { diversao: 30 }, cost: 150, effect: 'outfit', ages: WALKERS },
+  { id: 'checkup', name: 'Fazer check-up médico', icon: '🩺', objects: ['maca'], spot: 'lie', anim: 'lie', minutes: 30, rates: { conforto: 10 }, cost: 120, effect: 'checkup', ages: WALKERS },
+  { id: 'curso', name: 'Fazer curso noturno', icon: '🎓', objects: ['lousa'], spot: 'seatNear', maxSeatDist: 7, faceObject: true, anim: 'read', minutes: 120, rates: { diversao: -4 }, cost: 180, effect: 'curso', ages: ['jovem', 'adulto', 'idoso'] },
+  { id: 'reforco', name: 'Aula de reforço', icon: '📚', objects: ['lousa'], spot: 'seatNear', maxSeatDist: 7, faceObject: true, anim: 'read', minutes: 90, rates: { diversao: -6 }, cost: 60, effect: 'reforco', ages: ['crianca', 'adolescente'] },
+  { id: 'hora_extra', name: 'Fazer hora extra', icon: '⏱', objects: ['estacao_trabalho'], spot: 'seatNear', maxSeatDist: 1.4, anim: 'type', minutes: 120, rates: { diversao: -8, energia: -6 }, effect: 'horaextra', careerAt: true, ages: ['jovem', 'adulto', 'idoso'], power: true },
+  { id: 'musculacao', name: 'Fazer musculação', icon: '🏋', objects: ['aparelho_musculacao', 'barra_exercicio'], spot: 'stand', anim: 'exercise', minutes: 45, rates: { diversao: 16, energia: -16, higiene: -18 }, skill: { id: 'fitness', perHour: 0.9 }, ages: ['adolescente', 'jovem', 'adulto', 'idoso'], visitors: true, traitBonus: { ativo: 2 } },
+  { id: 'piquenique', name: 'Fazer piquenique', icon: '🧺', objects: ['toalha_piquenique'], spot: 'stand', anim: 'play', minutes: 40, rates: { fome: 80, social: 20, diversao: 30 }, cost: 20, ages: WALKERS, visitors: true },
 ];
 
 export const INTERACTION_BY_ID = new Map(INTERACTIONS.map((i) => [i.id, i]));

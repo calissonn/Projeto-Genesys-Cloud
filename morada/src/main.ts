@@ -5,6 +5,8 @@ import { Hud } from './ui/hud';
 import { LifeHud } from './ui/lifeHud';
 import { Simulation } from './sim/simulation';
 import { SelectTool } from './editor/tools';
+import { openCityMap } from './ui/cityMap';
+import { canBuildHere } from './model/project';
 import { h, toastFactory } from './ui/dom';
 import { startScreen, gameMenu, settingsDialog, type AppApi } from './ui/menus';
 import { storage } from './core/storage';
@@ -67,8 +69,22 @@ function toLife() {
   engine.onFrame = (dt) => life?.frame(dt);
 }
 
+function openMap() {
+  if (!hud || !life) return;
+  sim.world.ensure();
+  openCityMap(sim, {
+    toast,
+    onTravel: (lot) => {
+      // Em terrenos que não são seus só é possível viver/visitar.
+      if (mode === 'construir' && lot.owner !== 'jogador') toLife();
+      else if (mode === 'viver') life?.afterTravel();
+    },
+  });
+}
+
 function toBuild() {
   if (!hud || !life) return;
+  if (!canBuildHere(editor.project)) { toast('Você só pode construir nos seus imóveis. Volte para casa ou compre um terreno no mapa.'); return; }
   mode = 'construir';
   life.hide();
   hud.root.style.display = '';
@@ -82,6 +98,7 @@ let deferredInstall: any = null;
 
 const app: AppApi = {
   editor,
+  openMap: () => openMap(),
   settings,
   toast,
   installPrompt: null,
@@ -102,6 +119,7 @@ const app: AppApi = {
       openMenu: () => gameMenu(app),
       openSettings: () => settingsDialog(app),
       toBuild,
+      openMap,
       toast,
     });
     mode = 'construir';
